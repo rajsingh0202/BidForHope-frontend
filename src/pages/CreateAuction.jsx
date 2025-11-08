@@ -328,9 +328,10 @@ const isToday = startDate && (
   className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white"
   placeholderText="Select start date and time"
   minDate={now}
-  minTime={isToday ? now : new Date().setHours(0,0,0,0)}
-  maxTime={new Date().setHours(23,59,59,999)}
+  minTime={isToday ? now : new Date(new Date().setHours(0,0,0,0))}
+  maxTime={new Date(new Date().setHours(23,59,59,999))}
 />
+
 </div>
 
 <div>

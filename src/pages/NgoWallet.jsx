@@ -168,7 +168,9 @@ const NgoWallet = ({ ngoId, isOwner, domains = [] }) => {
                       <span className="bg-blue-900 text-blue-200 px-2 py-1 rounded-full uppercase font-bold text-xs">{tx.domain}</span>
                     }
                   </td>
-                  <td className="px-2 py-2 text-white max-w-[140px] truncate">{tx.description}</td>
+<td className="px-2 py-2 text-white max-w-xs break-words whitespace-normal">
+  {tx.description}
+</td>
                   <td className="px-2 py-2 text-yellow-200">
                     {new Date(tx.createdAt).toLocaleString()}
                   </td>

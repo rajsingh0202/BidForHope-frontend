@@ -10,10 +10,16 @@ const AllNgoTransactions = () => {
   const [selectedNgo, setSelectedNgo] = useState(null);
   const user = useSelector(state => state.auth?.user);
 
+   console.log('User role:', user?.role);
+console.log('User email:', user?.email);
+console.log('Selected NGO email:', selectedNgo?.email);
+console.log('Is Owner:', user?.role === 'ngo' && user?.email === selectedNgo?.email);
+
   useEffect(() => {
     const fetchNgos = async () => {
       try {
         const res = await getNGOs();
+          console.log('NGOs fetched:', res.data.data);
         setNgos(res.data.data);
       } catch (error) {
         alert('Failed to fetch NGOs');
@@ -66,7 +72,12 @@ const AllNgoTransactions = () => {
                   </div>
                   <button
                     className="mt-5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold shadow transition group-hover:scale-105"
-                    onClick={() => setSelectedNgo(ngo)}
+                    onClick={() => 
+                      {
+                         console.log('Selected NGO on click:', ngo);
+                        setSelectedNgo(ngo)
+                      }
+                    }
                   >
                     View Wallet & Transactions
                   </button>

@@ -1,9 +1,14 @@
 import axios from 'axios';
 
-const API = axios.create({
-  baseURL: 'https://bidforhope.onrender.com/api',
-});
+// Get the base URL from the environment variable
+// This will be 'http://localhost:5000' in development (from your .env file)
+// and 'https://bidforhope.onrender.com' in production (from Vercel's settings)
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+const API = axios.create({
+  // Use the environment variable for the base URL
+  baseURL: `${API_URL}/api`, 
+});
 
 // Add token to requests automatically
 API.interceptors.request.use((config) => {
@@ -71,7 +76,8 @@ export const addDebitTransaction = (ngoId, debitData) =>
 
 // Direct Donation
 export const directDonate = (auctionId, donationData) =>
-  axios.post(`http://localhost:5000/api/auctions/${auctionId}/donate`, donationData);
+  // Use the dynamic API_URL here as well, and fix the axios instance
+  axios.post(`${API_URL}/api/auctions/${auctionId}/donate`, donationData);
 
 // ---- Auto-bid Backend API functions ----
 
