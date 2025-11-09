@@ -1,21 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import {
-  getAuction,
-  placeBid,
-  getAuctionBids,
-  endAuction,
-  directDonate,
-  enableAutoBid,
-  disableAutoBid,
-  getAutoBidStatus,
-} from '../services/api';
+import { getAuction, placeBid, getAuctionBids, endAuction, directDonate, enableAutoBid, disableAutoBid, getAutoBidStatus } from '../services/api';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import { FiArrowLeft } from 'react-icons/fi';
 
-// Helper functions remain unchanged
 function getUniqueTopBids(bids) {
   const sorted = [...bids].sort((a, b) => b.amount - a.amount);
   const seen = new Set();
@@ -52,30 +42,33 @@ const AuctionDetails = () => {
   const [loading, setLoading] = useState(true);
   const [bidAmount, setBidAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
   const [showDonate, setShowDonate] = useState(false);
   const [donateAmount, setDonateAmount] = useState('');
   const [donorName, setDonorName] = useState('');
   const [donorMsg, setDonorMsg] = useState('');
   const [donateLoading, setDonateLoading] = useState(false);
+
+  // For live countdown
   const [timeLeft, setTimeLeft] = useState('');
-  // Auto-bid controls
+
+  // Autobid controls
   const [autoBidActive, setAutoBidActive] = useState(false); // Popup control
   const [autoBidMax, setAutoBidMax] = useState('');         // Input for max amount
   const [autoBidStatus, setAutoBidStatus] = useState(null); // Persistent status from backend
 
-  // Poll auction and bids every 2 seconds
   useEffect(() => {
     fetchAuction();
     fetchBids();
-    let poller = setInterval(() => {
-      fetchAuction();
-      fetchBids();
-    }, 2000);
-    return () => clearInterval(poller);
+      let poller = setInterval(() => {
+    fetchAuction();
+    fetchBids();
+  }, 2000); // Refresh every 2 seconds (or as you like)
+
+  return () => clearInterval(poller);
     // eslint-disable-next-line
   }, [id]);
 
-  // Fetch auto-bid status when auction/user changes
   useEffect(() => {
     if (isAuthenticated) {
       getAutoBidStatus(id)
@@ -85,14 +78,6 @@ const AuctionDetails = () => {
     // eslint-disable-next-line
   }, [id, isAuthenticated]);
 
-  // Auto-bid phase reset on stop (show dialog, revert to non-popup form)
-  useEffect(() => {
-    if (autoBidStatus && !autoBidStatus.isActive && autoBidStatus.stopReason) {
-      setAutoBidActive(false);
-    }
-  }, [autoBidStatus]);
-
-  // Live winner/duration
   useEffect(() => {
     let timerId;
     if (auction && auction.status === 'ended' && bids.length > 0) {
@@ -110,7 +95,6 @@ const AuctionDetails = () => {
     return () => clearInterval(timerId);
   }, [auction, bids]);
 
-  // Data fetching helpers
   const fetchAuction = async () => {
     try {
       const { data } = await getAuction(id);
@@ -132,7 +116,6 @@ const AuctionDetails = () => {
     }
   };
 
-  // Event handlers
   const handlePlaceBid = async (e) => {
     e.preventDefault();
     if (!isAuthenticated) {
@@ -197,7 +180,6 @@ const AuctionDetails = () => {
     }
   };
 
-  // Loading screens
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -219,7 +201,6 @@ const AuctionDetails = () => {
     );
   }
 
-  // Main UI
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800">
       <header className="bg-gray-900 shadow-sm">
@@ -264,7 +245,7 @@ const AuctionDetails = () => {
                 </div>
               )}
             </div>
-            {/* Auction Details Card */}
+            {/* Details ... (unchanged below here) */}
             <div className="bg-gray-900 rounded-xl shadow-md p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -314,7 +295,6 @@ const AuctionDetails = () => {
                 </div>
               </div>
             </div>
-            {/* NGO Beneficiary */}
             <div className="bg-gray-900 rounded-xl shadow-md p-6">
               <h3 className="font-semibold text-white mb-4">Beneficiary NGO</h3>
               <div className="flex items-center gap-4 mb-4">
@@ -331,6 +311,7 @@ const AuctionDetails = () => {
                   )}
                 </div>
               </div>
+              {/* Winner message */}
               {auction.status === 'ended' && winnerName && (
                 <div className="bg-green-800 bg-opacity-80 rounded-lg p-4 text-center">
                   <p className="text-xl font-extrabold text-yellow-300 mb-1">
@@ -385,6 +366,7 @@ const AuctionDetails = () => {
           <div className="lg:col-span-1">
             <div className="bg-gray-900 rounded-xl shadow-lg p-6 sticky top-6">
               <h2 className="text-2xl font-bold text-white mb-6">Place Your Bid</h2>
+              {/* Time Left near Place Your Bid */}
               {auction.status === 'active' && (
                 <div className="mb-6 text-right font-extrabold text-yellow-400 text-lg select-none">
                   Time Left: {timeLeft || 'Ending soon'}
@@ -445,69 +427,7 @@ const AuctionDetails = () => {
               <div className="mt-6">
                 {isAuthenticated && auction.status === 'active' && (
                   <>
-                    {autoBidStatus && !autoBidStatus.isActive && autoBidStatus.stopReason && (
-                      <div className="w-full text-center bg-orange-700 rounded-xl p-4 shadow-inner border-2 border-orange-500 flex flex-col items-center mb-4 mt-2">
-                        <span className="text-lg font-semibold text-white">
-                          🤖 Auto-Bid Stopped
-                        </span>
-                        <span className="block text-yellow-300 mt-2 text-base">
-                          {autoBidStatus.stopReason === 'highest-bidder' && "You are the highest bidder!"}
-                          {autoBidStatus.stopReason === 'max-amount' && "Maximum auto-bid amount reached."}
-                          {autoBidStatus.stopReason === 'auction-ended' && "Auction time is over."}
-                          {!["highest-bidder", "max-amount", "auction-ended"].includes(autoBidStatus.stopReason) && "Auto-bidding is no longer active."}
-                        </span>
-                      </div>
-                    )}
-                    {(!autoBidStatus || !autoBidStatus.isActive) && !autoBidActive && (
-                      <button
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg shadow-sm transition"
-                        onClick={() => setAutoBidActive(true)}
-                        style={{ fontFamily: 'inherit', fontSize: '1rem' }}
-                      >
-                        🤖 Enable Auto Bid
-                      </button>
-                    )}
-                    {autoBidActive && (
-                      <div className="mt-0 bg-purple-900 p-4 rounded-xl shadow-inner border border-purple-700">
-                        <form
-                          onSubmit={e => {
-                            e.preventDefault();
-                            handleEnableAutoBid();
-                          }}
-                        >
-                          <label className="block text-sm font-medium text-purple-200 mb-2">
-                            Max Auto-Bid Amount (₹)
-                          </label>
-                          <input
-                            type="number"
-                            required
-                            className="mb-3 w-full px-4 py-2 border border-purple-700 bg-black text-white rounded focus:ring-2 focus:ring-purple-500"
-                            placeholder={`Max amount (≥ ₹${auction.currentPrice + auction.bidIncrement})`}
-                            min={auction.currentPrice + auction.bidIncrement}
-                            value={autoBidMax}
-                            onChange={e => setAutoBidMax(e.target.value)}
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              type="submit"
-                              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded shadow transition"
-                              style={{ fontFamily: 'inherit' }}
-                            >
-                              Start Auto-Bid
-                            </button>
-                            <button
-                              type="button"
-                              className="bg-gray-700 hover:bg-gray-800 text-white font-semibold px-4 py-2 rounded shadow"
-                              onClick={() => setAutoBidActive(false)}
-                              style={{ fontFamily: 'inherit' }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    )}
-                    {autoBidStatus && autoBidStatus.isActive && (
+                    {autoBidStatus && autoBidStatus.isActive ? (
                       <div className="w-full text-center bg-purple-900 rounded-xl p-4 shadow-inner border-2 border-purple-700 flex flex-col items-center mb-4 mt-2">
                         <span className="text-lg font-semibold text-purple-200">
                           🤖 Auto-Bid is <span className="text-green-400 font-extrabold">ACTIVE</span>
@@ -521,11 +441,63 @@ const AuctionDetails = () => {
                           type="button"
                           onClick={handleDisableAutoBid}
                           className="mt-5 w-full bg-purple-600 hover:bg-purple-700 text-white font-extrabold py-3 rounded-xl shadow-lg transition text-lg"
-                          style={{ fontSize: '1.13rem', letterSpacing: '.01em' }}
+                          style={{ fontSize: '1.13rem', letterSpacing:'.01em'}}
                         >
                           🛑 Stop Auto-Bid
                         </button>
                       </div>
+                    ) : (
+                      <>
+                        {!autoBidActive ? (
+                          <button
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg shadow-sm transition"
+                            onClick={() => setAutoBidActive(true)}
+                            disabled={autoBidActive}
+                            style={{ fontFamily: 'inherit', fontSize: '1rem' }}
+                          >
+                            🤖 Enable Auto Bid
+                          </button>
+                        ) : (
+                          <div className="mt-0 bg-purple-900 p-4 rounded-xl shadow-inner border border-purple-700">
+                            <form
+                              onSubmit={e => {
+                                e.preventDefault();
+                                handleEnableAutoBid();
+                              }}
+                            >
+                              <label className="block text-sm font-medium text-purple-200 mb-2">
+                                Max Auto-Bid Amount (₹)
+                              </label>
+                              <input
+                                type="number"
+                                required
+                                className="mb-3 w-full px-4 py-2 border border-purple-700 bg-black text-white rounded focus:ring-2 focus:ring-purple-500"
+                                placeholder={`Max amount (≥ ₹${auction.currentPrice + auction.bidIncrement})`}
+                                min={auction.currentPrice + auction.bidIncrement}
+                                value={autoBidMax}
+                                onChange={e => setAutoBidMax(e.target.value)}
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  type="submit"
+                                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded shadow transition"
+                                  style={{ fontFamily: 'inherit' }}
+                                >
+                                  Start Auto-Bid
+                                </button>
+                                <button
+                                  type="button"
+                                  className="bg-gray-700 hover:bg-gray-800 text-white font-semibold px-4 py-2 rounded shadow"
+                                  onClick={() => setAutoBidActive(false)}
+                                  style={{ fontFamily: 'inherit' }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
