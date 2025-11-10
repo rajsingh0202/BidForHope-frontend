@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { getPendingNGOs, updateNGOStatus } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { EnvelopeIcon, MapPinIcon, CheckBadgeIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { io } from 'socket.io-client';
+
+const SOCKET_BACKEND_URL = 'https://bidforhope.onrender.com';
 
 const AdminPendingNGOs = () => {
   const [pendingNGOs, setPendingNGOs] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const socket = useRef();
 
   const fetchPendingNGOs = async () => {
     setLoading(true);
@@ -23,8 +27,19 @@ const AdminPendingNGOs = () => {
 
   useEffect(() => {
     fetchPendingNGOs(); // Initial load
-    const poller = setInterval(fetchPendingNGOs, 2000); // Poll every 2 seconds
-    return () => clearInterval(poller);
+
+    // Socket.IO listen for new NGO applications
+    socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
+    socket.current.on('connect', () => {
+      console.log('NGOs socket connected:', socket.current.id);
+    });
+    socket.current.on('newNGOPending', () => {
+      console.log('Socket event received: newNGOPending');
+      fetchPendingNGOs();
+    });
+    return () => {
+      if (socket.current) socket.current.disconnect();
+    };
   }, []);
 
   const handleStatusChange = async (id, status) => {
