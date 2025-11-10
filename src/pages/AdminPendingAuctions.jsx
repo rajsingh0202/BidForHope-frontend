@@ -36,7 +36,15 @@ const AdminPendingAuctions = () => {
     fetchPendingAuctions(); // initial load
 
     // Connect to Socket.IO backend (ensure url is https and correct)
-    socket.current = io(SOCKET_BACKEND_URL);
+    socket.current = io(SOCKET_BACKEND_URL,{ transports: ['websocket'] });
+  
+      socket.current.on('connect', () => {
+    console.log('Socket connected:', socket.current.id);
+  });
+
+  socket.current.on('connect_error', (err) => {
+    console.log('Socket connection error:', err);
+  });
 
     socket.current.on('newAuctionPending', () => {
        console.log('Socket event received!');
