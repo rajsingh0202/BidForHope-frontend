@@ -68,9 +68,7 @@ const AuctionDetails = () => {
           .catch(() => setAutoBidStatus(null));
       }
     };
-    pollAll(); // Initial fetch
-    let poller = setInterval(pollAll, 2000);
-    return () => clearInterval(poller);
+
     // eslint-disable-next-line
   }, [id, isAuthenticated]);
 

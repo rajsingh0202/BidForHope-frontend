@@ -25,22 +25,23 @@ const AdminPendingNGOs = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPendingNGOs(); // Initial load
+ useEffect(() => {
+  fetchPendingNGOs(); // Initial load only, no polling! 
 
-    // Socket.IO listen for new NGO applications
-    socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
-    socket.current.on('connect', () => {
-      console.log('NGOs socket connected:', socket.current.id);
-    });
-    socket.current.on('newNGOPending', () => {
-      console.log('Socket event received: newNGOPending');
-      fetchPendingNGOs();
-    });
-    return () => {
-      if (socket.current) socket.current.disconnect();
-    };
-  }, []);
+  // Socket.IO listen for new NGO applications
+  socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
+  socket.current.on('connect', () => {
+    console.log('NGOs socket connected:', socket.current.id);
+  });
+  socket.current.on('newNGOPending', () => {
+    console.log('Socket event received: newNGOPending');
+    fetchPendingNGOs(); // Only fetch when socket event is received!
+  });
+  return () => {
+    if (socket.current) socket.current.disconnect();
+  };
+}, []);
+
 
   const handleStatusChange = async (id, status) => {
     try {
