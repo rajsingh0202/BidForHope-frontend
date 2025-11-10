@@ -92,11 +92,12 @@ const AuctionDetails = () => {
   }, [auction, bids]);
 
   // If auto-bid is stopped (for any reason), reset setup popup so restart button appears
-  useEffect(() => {
-    if (autoBidStatus && !autoBidStatus.isActive && autoBidStatus.stopReason) {
-      setAutoBidActive(false);
-    }
-  }, [autoBidStatus]);
+useEffect(() => {
+  if (autoBidStatus && !autoBidStatus.isActive) {
+    setAutoBidActive(false);
+  }
+}, [autoBidStatus]);
+
 
   const fetchAuction = async () => {
     try {
