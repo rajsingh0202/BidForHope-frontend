@@ -5,19 +5,19 @@ import {
   approveAuction,
   rejectAuction,
   endAuction,
-  getPendingAuctionsCount,
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { UsersIcon, CurrencyRupeeIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { io } from 'socket.io-client';
+
+// REPLACE THIS with your actual Render backend URL!
+const SOCKET_BACKEND_URL = 'https://your-backend-render-url.com';
 
 const AdminPendingAuctions = () => {
   const [pendingAuctions, setPendingAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
-  // For hybrid polling
-  const [pendingCount, setPendingCount] = useState(null);
-  const prevCount = useRef(null);
+  const socket = useRef();
 
   const fetchPendingAuctions = async () => {
     setLoading(true);
@@ -31,22 +31,20 @@ const AdminPendingAuctions = () => {
     }
   };
 
-  // Hybrid polling: poll count, only fetch full list if count changes
   useEffect(() => {
-    fetchPendingAuctions(); // Initial load
-    const pollCount = setInterval(async () => {
-      try {
-        const { data } = await getPendingAuctionsCount(); // returns { count }
-        setPendingCount(data.count);
-        if (prevCount.current !== null && prevCount.current !== data.count) {
-          fetchPendingAuctions();
-        }
-        prevCount.current = data.count;
-      } catch (err) {
-        // Optionally handle error here
-      }
-    }, 2000); // every 3 seconds
-    return () => clearInterval(pollCount);
+    fetchPendingAuctions(); // initial load
+
+    // Connect to Socket.IO backend (ensure url is https and correct)
+    socket.current = io(SOCKET_BACKEND_URL);
+
+    socket.current.on('newAuctionPending', () => {
+      fetchPendingAuctions();
+    });
+
+    // Clean up the socket connection
+    return () => {
+      if (socket.current) socket.current.disconnect();
+    };
   }, []);
 
   const handleApprove = async (id) => {
