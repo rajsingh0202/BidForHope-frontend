@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-toastify';
 import {
   getPendingAuctions,
   approveAuction,
   rejectAuction,
   endAuction,
+  getPendingAuctionsCount,
 } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { UsersIcon, CurrencyRupeeIcon, ClockIcon } from '@heroicons/react/24/outline';
@@ -14,24 +15,38 @@ const AdminPendingAuctions = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
- const fetchPendingAuctions = async () => {
-  setLoading(true);
-  try {
-    const res = await getPendingAuctions();
-    console.log('Fetched auctions:', res.data.data || res.data.auctions || []);
-    setPendingAuctions(res.data.data || res.data.auctions || []);
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Failed to fetch pending auctions');
-  } finally {
-    setLoading(false);
-  }
-};
+  // For hybrid polling
+  const [pendingCount, setPendingCount] = useState(null);
+  const prevCount = useRef(null);
 
+  const fetchPendingAuctions = async () => {
+    setLoading(true);
+    try {
+      const res = await getPendingAuctions();
+      setPendingAuctions(res.data.data || res.data.auctions || []);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to fetch pending auctions');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Hybrid polling: poll count, only fetch full list if count changes
   useEffect(() => {
     fetchPendingAuctions(); // Initial load
-    const poller = setInterval(fetchPendingAuctions, 2000); // Poll every 5 seconds
-    return () => clearInterval(poller);
+    const pollCount = setInterval(async () => {
+      try {
+        const { data } = await getPendingAuctionsCount(); // returns { count }
+        setPendingCount(data.count);
+        if (prevCount.current !== null && prevCount.current !== data.count) {
+          fetchPendingAuctions();
+        }
+        prevCount.current = data.count;
+      } catch (err) {
+        // Optionally handle error here
+      }
+    }, 2000); // every 3 seconds
+    return () => clearInterval(pollCount);
   }, []);
 
   const handleApprove = async (id) => {
@@ -112,9 +127,9 @@ const AdminPendingAuctions = () => {
                     ₹{auction.currentPrice?.toLocaleString()}
                   </div>
                   <div className={`inline-flex gap-1 items-center px-3 py-1 rounded-full text-xs font-bold shadow
-                  ${auction.status === 'pending'
-                    ? 'bg-yellow-700 text-yellow-200'
-                    : 'bg-gray-700 text-gray-200'}`}>
+                    ${auction.status === 'pending'
+                      ? 'bg-yellow-700 text-yellow-200'
+                      : 'bg-gray-700 text-gray-200'}`}>
                     <ClockIcon className="w-4 h-4 mr-1" />
                     {auction.status}
                   </div>

@@ -92,5 +92,6 @@ export const disableAutoBid = (auctionId) => {
 export const getAutoBidStatus = (auctionId) => {
   return API.get(`/autobid/status/${auctionId}`);
 };
-
+export const getPendingAuctionsCount = () =>
+  axios.get('/api/auctions/pending/count');
 export default API;
