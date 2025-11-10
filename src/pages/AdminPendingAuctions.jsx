@@ -14,17 +14,19 @@ const AdminPendingAuctions = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const fetchPendingAuctions = async () => {
-    setLoading(true);
-    try {
-      const res = await getPendingAuctions();
-      setPendingAuctions(res.data.data || res.data.auctions || []);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to fetch pending auctions');
-    } finally {
-      setLoading(false);
-    }
-  };
+ const fetchPendingAuctions = async () => {
+  setLoading(true);
+  try {
+    const res = await getPendingAuctions();
+    console.log('Fetched auctions:', res.data.data || res.data.auctions || []);
+    setPendingAuctions(res.data.data || res.data.auctions || []);
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Failed to fetch pending auctions');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchPendingAuctions(); // Initial load
