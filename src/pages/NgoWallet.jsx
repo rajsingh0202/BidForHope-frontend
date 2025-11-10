@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { getNGOTransactions } from '../services/api';
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { io } from 'socket.io-client';
+
+const SOCKET_BACKEND_URL = 'https://bidforhope.onrender.com';
 
 const NgoWallet = ({ ngoId, isOwner, domains = [] }) => {
   const [transactions, setTransactions] = useState([]);
@@ -11,6 +14,7 @@ const NgoWallet = ({ ngoId, isOwner, domains = [] }) => {
   const [domain, setDomain] = useState('');
   const [loading, setLoading] = useState(true);
   const [debiting, setDebiting] = useState(false);
+  const socket = useRef();
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -35,7 +39,7 @@ const NgoWallet = ({ ngoId, isOwner, domains = [] }) => {
     setDebiting(true);
     try {
       await axios.post(
-        `http://localhost:5000/api/ngos/${ngoId}/transactions/debit`,
+        `https://bidforhope.onrender.com/api/ngos/${ngoId}/transactions/debit`,
         { amount: Number(amount), description, domain }
       );
       setAmount('');
@@ -55,6 +59,18 @@ const NgoWallet = ({ ngoId, isOwner, domains = [] }) => {
 
   useEffect(() => {
     fetchTransactions();
+
+    // Socket.IO listen for wallet updates (auction ended, direct donation)
+    socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
+
+    socket.current.on(`walletUpdate:${ngoId}`, () => {
+      console.log(`Wallet update received for NGO ${ngoId}`);
+      fetchTransactions();
+    });
+
+    return () => {
+      if (socket.current) socket.current.disconnect();
+    };
   }, [ngoId]);
 
   return (
@@ -168,9 +184,9 @@ const NgoWallet = ({ ngoId, isOwner, domains = [] }) => {
                       <span className="bg-blue-900 text-blue-200 px-2 py-1 rounded-full uppercase font-bold text-xs">{tx.domain}</span>
                     }
                   </td>
-<td className="px-2 py-2 text-white max-w-xs break-words whitespace-normal">
-  {tx.description}
-</td>
+                  <td className="px-2 py-2 text-white max-w-xs break-words whitespace-normal">
+                    {tx.description}
+                  </td>
                   <td className="px-2 py-2 text-yellow-200">
                     {new Date(tx.createdAt).toLocaleString()}
                   </td>
