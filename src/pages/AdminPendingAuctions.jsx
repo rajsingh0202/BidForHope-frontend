@@ -11,7 +11,8 @@ import { UsersIcon, CurrencyRupeeIcon, ClockIcon } from '@heroicons/react/24/out
 import { io } from 'socket.io-client';
 
 // REPLACE THIS with your actual Render backend URL!
-const SOCKET_BACKEND_URL = 'https://your-backend-render-url.com';
+const SOCKET_BACKEND_URL = 'https://bidforhope.onrender.com'; // ← your actual backend URL, not 'your-backend-render-url.com'
+
 
 const AdminPendingAuctions = () => {
   const [pendingAuctions, setPendingAuctions] = useState([]);
@@ -38,6 +39,7 @@ const AdminPendingAuctions = () => {
     socket.current = io(SOCKET_BACKEND_URL);
 
     socket.current.on('newAuctionPending', () => {
+       console.log('Socket event received!');
       fetchPendingAuctions();
     });
 
