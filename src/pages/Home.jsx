@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAuctions, getAuctionBids } from '../services/api';
 import { logout } from '../redux/slices/authSlice';
 import { toast } from 'react-toastify';
+import { io } from 'socket.io-client';
+
+const SOCKET_BACKEND_URL = 'https://bidforhope.onrender.com';
 
 function getTimeLeft(endDate) {
   const now = new Date();
   const end = new Date(endDate);
   const diff = end - now;
   if (diff <= 0) return null;
-
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const mins = Math.floor((diff / (1000 * 60)) % 60);
   const secs = Math.floor((diff / 1000) % 60);
-
   return `${hours}h ${mins}m ${secs}s`;
 }
 
@@ -24,12 +25,26 @@ const Home = () => {
   const [tab, setTab] = useState('live');
   const [timeLeftMap, setTimeLeftMap] = useState({});
   const [winnerMap, setWinnerMap] = useState({});
+  const socket = useRef();
 
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
 
   useEffect(() => {
     fetchAuctions();
+
+    // Socket.IO connection for auto-refresh
+    socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
+    socket.current.on('connect', () => {
+      console.log('Home socket connected!', socket.current.id);
+    });
+    socket.current.on('auctionUpdated', () => {
+      console.log('Home page socket: auctionUpdated event received!');
+      fetchAuctions();
+    });
+    return () => {
+      if (socket.current) socket.current.disconnect();
+    };
     // eslint-disable-next-line
   }, []);
 
@@ -38,7 +53,6 @@ const Home = () => {
     if (!auctions || auctions.length === 0) return;
     const live = auctions.filter((a) => a.status === 'active');
     if (live.length === 0) return;
-
     const updateTimers = () => {
       const map = {};
       live.forEach(a => {
