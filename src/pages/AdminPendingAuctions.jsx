@@ -27,7 +27,9 @@ const AdminPendingAuctions = () => {
   };
 
   useEffect(() => {
-    fetchPendingAuctions();
+    fetchPendingAuctions(); // Initial load
+    const poller = setInterval(fetchPendingAuctions, 2000); // Poll every 5 seconds
+    return () => clearInterval(poller);
   }, []);
 
   const handleApprove = async (id) => {
@@ -108,9 +110,9 @@ const AdminPendingAuctions = () => {
                     ₹{auction.currentPrice?.toLocaleString()}
                   </div>
                   <div className={`inline-flex gap-1 items-center px-3 py-1 rounded-full text-xs font-bold shadow
-                    ${auction.status === 'pending'
-                      ? 'bg-yellow-700 text-yellow-200'
-                      : 'bg-gray-700 text-gray-200'}`}>
+                  ${auction.status === 'pending'
+                    ? 'bg-yellow-700 text-yellow-200'
+                    : 'bg-gray-700 text-gray-200'}`}>
                     <ClockIcon className="w-4 h-4 mr-1" />
                     {auction.status}
                   </div>

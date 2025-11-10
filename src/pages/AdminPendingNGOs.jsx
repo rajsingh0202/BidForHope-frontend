@@ -22,7 +22,9 @@ const AdminPendingNGOs = () => {
   };
 
   useEffect(() => {
-    fetchPendingNGOs();
+    fetchPendingNGOs(); // Initial load
+    const poller = setInterval(fetchPendingNGOs, 2000); // Poll every 2 seconds
+    return () => clearInterval(poller);
   }, []);
 
   const handleStatusChange = async (id, status) => {

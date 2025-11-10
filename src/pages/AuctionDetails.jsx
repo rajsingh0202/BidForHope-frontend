@@ -57,24 +57,20 @@ const AuctionDetails = () => {
   const [autoBidMax, setAutoBidMax] = useState('');         // Input for max amount
   const [autoBidStatus, setAutoBidStatus] = useState(null); // Persistent status from backend
 
+  // Main polling effect: auction, bids, and autoBidStatus every 2 seconds for live updates
   useEffect(() => {
-    fetchAuction();
-    fetchBids();
-      let poller = setInterval(() => {
-    fetchAuction();
-    fetchBids();
-  }, 2000); // Refresh every 2 seconds (or as you like)
-
-  return () => clearInterval(poller);
-    // eslint-disable-next-line
-  }, [id]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      getAutoBidStatus(id)
-        .then(res => setAutoBidStatus(res.data.autoBid))
-        .catch(() => setAutoBidStatus(null));
-    }
+    const pollAll = () => {
+      fetchAuction();
+      fetchBids();
+      if (isAuthenticated) {
+        getAutoBidStatus(id)
+          .then(res => setAutoBidStatus(res.data.autoBid))
+          .catch(() => setAutoBidStatus(null));
+      }
+    };
+    pollAll(); // Initial fetch
+    let poller = setInterval(pollAll, 2000);
+    return () => clearInterval(poller);
     // eslint-disable-next-line
   }, [id, isAuthenticated]);
 
@@ -94,6 +90,13 @@ const AuctionDetails = () => {
     }
     return () => clearInterval(timerId);
   }, [auction, bids]);
+
+  // If auto-bid is stopped (for any reason), reset setup popup so restart button appears
+  useEffect(() => {
+    if (autoBidStatus && !autoBidStatus.isActive && autoBidStatus.stopReason) {
+      setAutoBidActive(false);
+    }
+  }, [autoBidStatus]);
 
   const fetchAuction = async () => {
     try {
@@ -245,7 +248,7 @@ const AuctionDetails = () => {
                 </div>
               )}
             </div>
-            {/* Details ... (unchanged below here) */}
+            {/* Details Card */}
             <div className="bg-gray-900 rounded-xl shadow-md p-6">
               <div className="flex items-start justify-between mb-4">
                 <div>
@@ -295,6 +298,7 @@ const AuctionDetails = () => {
                 </div>
               </div>
             </div>
+            {/* NGO Beneficiary */}
             <div className="bg-gray-900 rounded-xl shadow-md p-6">
               <h3 className="font-semibold text-white mb-4">Beneficiary NGO</h3>
               <div className="flex items-center gap-4 mb-4">
@@ -366,7 +370,6 @@ const AuctionDetails = () => {
           <div className="lg:col-span-1">
             <div className="bg-gray-900 rounded-xl shadow-lg p-6 sticky top-6">
               <h2 className="text-2xl font-bold text-white mb-6">Place Your Bid</h2>
-              {/* Time Left near Place Your Bid */}
               {auction.status === 'active' && (
                 <div className="mb-6 text-right font-extrabold text-yellow-400 text-lg select-none">
                   Time Left: {timeLeft || 'Ending soon'}
@@ -448,16 +451,29 @@ const AuctionDetails = () => {
                       </div>
                     ) : (
                       <>
-                        {!autoBidActive ? (
+                        {autoBidStatus && !autoBidStatus.isActive && autoBidStatus.stopReason && (
+                          <div className="w-full text-center bg-orange-700 rounded-xl p-4 shadow-inner border-2 border-orange-500 flex flex-col items-center mb-4 mt-2">
+                            <span className="text-lg font-semibold text-white">
+                              🤖 Auto-Bid Stopped
+                            </span>
+                            <span className="block text-yellow-300 mt-2 text-base">
+                              {autoBidStatus.stopReason === 'highest-bidder' && "You are the highest bidder!"}
+                              {autoBidStatus.stopReason === 'max-amount' && "Maximum auto-bid amount reached."}
+                              {autoBidStatus.stopReason === 'auction-ended' && "Auction time is over."}
+                              {!["highest-bidder", "max-amount", "auction-ended"].includes(autoBidStatus.stopReason) && "Auto-bidding is no longer active."}
+                            </span>
+                          </div>
+                        )}
+                        {(!autoBidStatus || !autoBidStatus.isActive) && !autoBidActive && (
                           <button
                             className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg shadow-sm transition"
                             onClick={() => setAutoBidActive(true)}
-                            disabled={autoBidActive}
                             style={{ fontFamily: 'inherit', fontSize: '1rem' }}
                           >
                             🤖 Enable Auto Bid
                           </button>
-                        ) : (
+                        )}
+                        {autoBidActive && (
                           <div className="mt-0 bg-purple-900 p-4 rounded-xl shadow-inner border border-purple-700">
                             <form
                               onSubmit={e => {
