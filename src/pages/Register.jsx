@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FiArrowLeft } from 'react-icons/fi';
-import { register, createNGO } from '../services/api';
+import { register, createNGO, sendOtp, verifyOtp } from '../services/api';
 
 const Register = () => {
+  // Registration form state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,11 +15,17 @@ const Register = () => {
     placeAddress: '',
     workingYears: '',
     domains: [],
-    domainInput: '', // For tag input
+    domainInput: '',
   });
+
+  // OTP states
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   const navigate = useNavigate();
 
+  // Handle input change for registration data
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -48,8 +55,42 @@ const Register = () => {
     });
   };
 
+  const isGmail = (email) =>
+  /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
+  // Send OTP for email verification
+  const handleSendOtp = async () => {
+    if (!formData.email) return toast.error("Enter your email first");
+    if (!isGmail(formData.email)) {
+    return toast.error("Only valid @gmail.com addresses allowed.");
+  }
+    try {
+      await sendOtp({ email: formData.email });
+      setOtpSent(true);
+      toast.success('OTP sent to your email!');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to send OTP');
+    }
+  };
+
+  // Verify OTP, unlock full registration form
+  const handleVerifyOtp = async () => {
+    try {
+      await verifyOtp({ email: formData.email, otp });
+      setOtpVerified(true);
+      toast.success('OTP verified! You can now create your account.');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Invalid OTP');
+      setOtpVerified(false);
+    }
+  };
+
+  // Submit full registration (allowed only after email verified)
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!otpVerified) {
+      toast.error("Please verify your email with OTP before creating account");
+      return;
+    }
     let sendData = { ...formData };
     delete sendData.domainInput;
     if (sendData.role === 'ngo') {
@@ -86,8 +127,8 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black to-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
-      <Link 
-        to="/" 
+      <Link
+        to="/"
         className="absolute top-4 left-4 flex items-center gap-2 text-gray-400 hover:text-white transition"
       >
         <FiArrowLeft /> Back to Home
@@ -101,164 +142,208 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Full Name */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-              Full Name
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
-              placeholder="John Doe"
-            />
-          </div>
-          {/* Email */}
+          {/* Email with Send OTP */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
               Email
             </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
-              placeholder="you@example.com"
-            />
+            <div className="flex">
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-700 rounded-l-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
+                placeholder="you@gmail.com.com"
+                disabled={otpVerified} // Once verified, don't allow change
+              />
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                className="bg-green-700 text-white px-4 rounded-r-lg hover:bg-green-800"
+                disabled={!formData.email || otpSent || otpVerified}
+              >
+                {otpSent ? 'OTP Sent' : 'Send OTP'}
+              </button>
+            </div>
+            {/* OTP input section shows after OTP is sent, until OTP is verified */}
+            {otpSent && !otpVerified && (
+              <div className="mt-4 flex">
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={e => setOtp(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-700 rounded-l-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
+                  placeholder="Enter OTP"
+                  maxLength={6}
+                />
+                <button
+                  type="button"
+                  className="bg-blue-700 text-white px-4 rounded-r-lg hover:bg-blue-800"
+                  onClick={handleVerifyOtp}
+                  disabled={!otp}
+                >
+                  Verify OTP
+                </button>
+              </div>
+            )}
+            {otpVerified && (
+              <div className="mt-2 text-green-400 text-sm">
+                OTP verified ✓
+              </div>
+            )}
           </div>
-          {/* Password */}
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
-              placeholder="********"
-            />
-          </div>
-          {/* Role */}
-          <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-300 mb-2">
-              Role
-            </label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              <option value="user">User (Bidder/Donor)</option>
-              <option value="ngo">NGO Representative</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          {/* NGO Extra Fields: Only show if role is ngo */}
-          {formData.role === 'ngo' && (
+
+          {/* Registration Form - Only show if OTP is verified */}
+          {otpVerified && (
             <>
-              {/* NGO Name */}
+              {/* Full Name */}
               <div>
-                <label htmlFor="ngoName" className="block text-sm font-medium text-gray-300 mb-2">
-                  NGO Name
+                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                  Full Name
                 </label>
                 <input
-                  id="ngoName"
-                  name="ngoName"
+                  id="name"
+                  name="name"
                   type="text"
                   required
-                  value={formData.ngoName}
+                  value={formData.name}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
-                  placeholder="Hope for All Foundation"
+                  placeholder="John Doe"
                 />
               </div>
-              {/* Place Address */}
+              {/* Password */}
               <div>
-                <label htmlFor="placeAddress" className="block text-sm font-medium text-gray-300 mb-2">
-                  Place Address
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                  Password
                 </label>
                 <input
-                  id="placeAddress"
-                  name="placeAddress"
-                  type="text"
+                  id="password"
+                  name="password"
+                  type="password"
                   required
-                  value={formData.placeAddress}
+                  value={formData.password}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
-                  placeholder="123 Main Street, Mumbai"
+                  placeholder="********"
                 />
               </div>
-              {/* Working Years */}
+              {/* Role */}
               <div>
-                <label htmlFor="workingYears" className="block text-sm font-medium text-gray-300 mb-2">
-                  Working Years
+                <label htmlFor="role" className="block text-sm font-medium text-gray-300 mb-2">
+                  Role
                 </label>
-                <input
-                  id="workingYears"
-                  name="workingYears"
-                  type="number"
-                  required
-                  value={formData.workingYears}
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
-                  placeholder="5"
-                  min="0"
-                />
+                  className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="user">User (Bidder/Donor)</option>
+                  <option value="ngo">NGO Representative</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
-              {/* Domains: Tag Input */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Field of Domain(s)
-                </label>
-                <div className="flex">
-                  <input
-                    type="text"
-                    value={formData.domainInput}
-                    onChange={handleDomainInput}
-                    className="w-full px-4 py-3 border border-gray-700 rounded-l-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
-                    placeholder="Enter a domain (students welfare, disaster...)"
-                  />
-                  <button
-                    onClick={handleAddDomain}
-                    className="bg-green-700 text-white px-5 rounded-r-lg hover:bg-green-800"
-                  >
-                    Add
-                  </button>
-                </div>
-                <div className="mt-2">
-                  {formData.domains.map((domain, idx) => (
-                    <span key={idx} className="inline-block bg-green-950 text-green-200 rounded-full px-3 py-1 mr-2 mb-2 border border-green-800">
-                      {domain}
+              {/* NGO Extra Fields: Only show if role is ngo */}
+              {formData.role === 'ngo' && (
+                <>
+                  {/* NGO Name */}
+                  <div>
+                    <label htmlFor="ngoName" className="block text-sm font-medium text-gray-300 mb-2">
+                      NGO Name
+                    </label>
+                    <input
+                      id="ngoName"
+                      name="ngoName"
+                      type="text"
+                      required
+                      value={formData.ngoName}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
+                      placeholder="Hope for All Foundation"
+                    />
+                  </div>
+                  {/* Place Address */}
+                  <div>
+                    <label htmlFor="placeAddress" className="block text-sm font-medium text-gray-300 mb-2">
+                      Place Address
+                    </label>
+                    <input
+                      id="placeAddress"
+                      name="placeAddress"
+                      type="text"
+                      required
+                      value={formData.placeAddress}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
+                      placeholder="123 Main Street, Mumbai"
+                    />
+                  </div>
+                  {/* Working Years */}
+                  <div>
+                    <label htmlFor="workingYears" className="block text-sm font-medium text-gray-300 mb-2">
+                      Working Years
+                    </label>
+                    <input
+                      id="workingYears"
+                      name="workingYears"
+                      type="number"
+                      required
+                      value={formData.workingYears}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-700 rounded-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
+                      placeholder="5"
+                      min="0"
+                    />
+                  </div>
+                  {/* Domains: Tag Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Field of Domain(s)
+                    </label>
+                    <div className="flex">
+                      <input
+                        type="text"
+                        value={formData.domainInput}
+                        onChange={handleDomainInput}
+                        className="w-full px-4 py-3 border border-gray-700 rounded-l-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
+                        placeholder="Enter a domain (students welfare, disaster...)"
+                      />
                       <button
-                        type="button"
-                        onClick={() => handleRemoveDomain(domain)}
-                        className="ml-2 text-green-400 hover:text-green-300"
+                        onClick={handleAddDomain}
+                        className="bg-green-700 text-white px-5 rounded-r-lg hover:bg-green-800"
                       >
-                        ×
+                        Add
                       </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
+                    </div>
+                    <div className="mt-2">
+                      {formData.domains.map((domain, idx) => (
+                        <span key={idx} className="inline-block bg-green-950 text-green-200 rounded-full px-3 py-1 mr-2 mb-2 border border-green-800">
+                          {domain}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDomain(domain)}
+                            className="ml-2 text-green-400 hover:text-green-300"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
-
+          {/* Only enabled if OTP is verified */}
           <button
             type="submit"
-            className="w-full bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105"
+            className={`w-full bg-green-700 hover:bg-green-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105 ${!otpVerified ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={!otpVerified}
           >
             Create Account
           </button>
