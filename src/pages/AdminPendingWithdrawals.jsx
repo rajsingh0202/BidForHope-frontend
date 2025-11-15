@@ -3,6 +3,11 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
+const API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://bidforhope.onrender.com"
+    : "";
+
 const AdminPendingWithdrawals = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,8 +26,8 @@ const AdminPendingWithdrawals = () => {
   const fetchWithdrawals = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/api/withdrawals/all');
-      setRequests(res.data.data.filter(r => r.status === 'pending'));
+      const res = await axios.get(`${API_BASE_URL}/api/withdrawals/all`);
+      setRequests(Array.isArray(res.data.data) ? res.data.data.filter(r => r.status === 'pending') : []);
     } catch (err) {
       toast.error('Failed to load withdrawal requests');
     } finally {
@@ -43,9 +48,9 @@ const AdminPendingWithdrawals = () => {
     setProcessingId(id);
     try {
       if (status === 'approved') {
-        await axios.post(`/api/payouts/withdrawal/${id}/process-and-pay`);
+        await axios.post(`${API_BASE_URL}/api/payouts/withdrawal/${id}/process-and-pay`);
       } else {
-        await axios.put(`/api/withdrawals/${id}/process`, { status });
+        await axios.put(`${API_BASE_URL}/api/withdrawals/${id}/process`, { status });
       }
       toast.success(`Withdrawal ${status}`);
       fetchWithdrawals();
@@ -72,7 +77,7 @@ const AdminPendingWithdrawals = () => {
     if (secretCode === "TEST123") {
       setProcessingId(selectedReq._id);
       try {
-        await axios.post(`/api/withdrawals/${selectedReq._id}/approve-manual`, { code: secretCode });
+        await axios.post(`${API_BASE_URL}/api/withdrawals/${selectedReq._id}/approve-manual`, { code: secretCode });
         toast.success("Withdrawal approved (manual)");
         fetchWithdrawals();
         setShowDialog(false);
