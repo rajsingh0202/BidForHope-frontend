@@ -4,6 +4,11 @@ import { getNGOTransactions } from '../services/api';
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { io } from 'socket.io-client';
 
+const API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://bidforhope.onrender.com"
+    : "";
+
 const SOCKET_BACKEND_URL = 'https://bidforhope.onrender.com';
 
 const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
@@ -47,13 +52,13 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
 
   // Fetch Bank Details (send email in query param)
   const fetchBankDetails = async () => {
-      console.log("Fetching bank details for: ", ngoEmail); // ADD THIS
+    console.log("Fetching bank details for: ", ngoEmail);
     if (!ngoEmail) {
       setBankDetails(null);
       return;
     }
     try {
-      const res = await axios.get(`/api/ngos/bank-details`, {
+      const res = await axios.get(`${API_BASE_URL}/api/ngos/bank-details`, {
         params: { email: ngoEmail }
       });
       setBankDetails(res.data.data);
@@ -73,7 +78,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
   // Fetch Withdrawal Requests for this NGO (now by email)
   const fetchWithdrawalRequests = async () => {
     try {
-      const res = await axios.get(`/api/withdrawals/my-requests`, {
+      const res = await axios.get(`${API_BASE_URL}/api/withdrawals/my-requests`, {
         params: { ngoEmail }
       });
       setWithdrawalRequests(Array.isArray(res.data.data) ? res.data.data : []);
@@ -96,7 +101,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
     }
     setWithdrawing(true);
     try {
-      await axios.post('/api/withdrawals/request', {
+      await axios.post(`${API_BASE_URL}/api/withdrawals/request`, {
         ngoEmail,
         amount: Number(amount),
         domain,
@@ -124,7 +129,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
     e.preventDefault();
     setBankStatus('Saving...');
     try {
-      await axios.put(`/api/ngos/bank-details`, {
+      await axios.put(`${API_BASE_URL}/api/ngos/bank-details`, {
         email: ngoEmail,
         ...bankForm
       });
@@ -136,7 +141,6 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
     }
   };
 
-  // Protect all fetching with email guards, and log on client for debug
   useEffect(() => {
     fetchTransactions();
     if (ngoEmail) {
