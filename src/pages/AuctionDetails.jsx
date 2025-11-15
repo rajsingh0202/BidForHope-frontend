@@ -50,7 +50,6 @@ function isWinner(bids, userId) {
 }
 
 const SOCKET_URL = 'https://bidforhope.onrender.com'; // Change this to your API address if deployed
-const [showEndAuctionConfirm, setShowEndAuctionConfirm] = useState(false);
 
 const AuctionDetails = () => {
   const [winnerName, setWinnerName] = useState('');
@@ -74,7 +73,7 @@ const AuctionDetails = () => {
   const [donorName, setDonorName] = useState('');
   const [donorMsg, setDonorMsg] = useState('');
   const [donateLoading, setDonateLoading] = useState(false);
-
+  const [showEndAuctionConfirm, setShowEndAuctionConfirm] = useState(false);
   // For live countdown
   const [timeLeft, setTimeLeft] = useState('');
 
