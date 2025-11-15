@@ -78,33 +78,26 @@ const AuctionDetails = () => {
   const socket = useRef();
 
   useEffect(() => {
-    // Connect to Socket.IO backend
-    socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
+  socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
 
-    // Join this auction's room
-    socket.current.emit('joinAuctionRoom', id);
+  socket.current.emit('joinAuctionRoom', id);
 
-    // Listen for auction ended event
-    socket.current.on('auctionEnded', () => {
-      toast.info('Auction ended! Refreshing...');
-      // Option A: Fetch new auction state for smooth UI update
-      fetchAuction();
-      fetchBids();
-      // Option B: Or to force a full reset, use window.location.reload();
-      // window.location.reload();
-    });
+  socket.current.on('auctionEnded', () => {
+    toast.info('Auction ended! Showing winner...');
+    fetchAuction();
+    fetchBids();
+  });
 
-    // Optional: handle socket errors
-    socket.current.on('connect_error', (err) => {
-      console.log('Socket connection error:', err);
-    });
+  socket.current.on('connect_error', (err) => {
+    console.log('Socket connection error:', err);
+  });
 
-    // Cleanup
-    return () => {
-      socket.current.emit('leaveAuctionRoom', id);
-      socket.current.disconnect();
-    };
-  }, [id]); // Only run on auction id change
+  return () => {
+    socket.current.emit('leaveAuctionRoom', id);
+    socket.current.disconnect();
+  };
+}, [id]);
+// Only run on auction id change
 
   // Main polling effect: auction, bids, and autoBidStatus every 2 seconds for live updates
   useEffect(() => {
