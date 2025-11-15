@@ -49,7 +49,7 @@ function isWinner(bids, userId) {
   return sorted[0]?.bidder?._id === userId;
 }
 
-const SOCKET_URL = 'http://localhost:5000'; // Change this to your API address if deployed
+const SOCKET_URL = 'https://bidforhope.onrender.com'; // Change this to your API address if deployed
 
 const AuctionDetails = () => {
   const [winnerName, setWinnerName] = useState('');
