@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { createPaymentOrder, verifyPayment } from '../services/api';
 import { toast } from 'react-toastify';
 
-const RazorpayPayment = ({ amount, ngoId, auctionId, type, onSuccess, onClose }) => {
+// Use ngoEmail and NOT ngoId everywhere
+const RazorpayPayment = ({ amount, ngoEmail, auctionId, type, onSuccess, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [paymentMode, setPaymentMode] = useState(null); // null, 'test', or 'real'
   const [testCode, setTestCode] = useState('');
@@ -20,7 +21,7 @@ const RazorpayPayment = ({ amount, ngoId, auctionId, type, onSuccess, onClose })
     try {
       const { data } = await createPaymentOrder({
         amount,
-        ngoId,
+        ngoEmail,                    // <--- pass the email here
         auctionId: auctionId || null,
         type
       });
@@ -50,7 +51,7 @@ const RazorpayPayment = ({ amount, ngoId, auctionId, type, onSuccess, onClose })
     try {
       const { data } = await createPaymentOrder({
         amount,
-        ngoId,
+        ngoEmail,                    // <--- pass the email here
         auctionId: auctionId || null,
         type
       });
@@ -84,7 +85,7 @@ const RazorpayPayment = ({ amount, ngoId, auctionId, type, onSuccess, onClose })
         prefill: { name: '', email: '', contact: '' },
         theme: { color: '#16a34a' },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             setLoading(false);
             toast.info('Payment cancelled');
             if (onClose) onClose();
