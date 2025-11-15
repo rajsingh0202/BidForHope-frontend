@@ -50,6 +50,7 @@ function isWinner(bids, userId) {
 }
 
 const SOCKET_URL = 'https://bidforhope.onrender.com'; // Change this to your API address if deployed
+const [showEndAuctionConfirm, setShowEndAuctionConfirm] = useState(false);
 
 const AuctionDetails = () => {
   const [winnerName, setWinnerName] = useState('');
@@ -104,8 +105,15 @@ const AuctionDetails = () => {
 
     // Optional: Listen for auction end event if you want to update the UI instantly
     socketRef.current.on('auctionEnded', () => {
-      fetchAuction(); // update auction status if ended in backend
-    });
+  fetchAuction(); // always refresh auction
+  if (isAuthenticated) {
+    getAutoBidStatus(id)
+      .then((res) => setAutoBidStatus(res.data.autoBid))
+      .catch(() => setAutoBidStatus(null));
+  }
+  toast.info('Auction has ended!');
+});
+
 
     return () => {
       socketRef.current.disconnect();
@@ -646,19 +654,20 @@ const AuctionDetails = () => {
                 </div>
               )}
 
-              {user?.role === 'admin' && auction.status === 'active' && (
-                <div className="mt-6 pt-6 border-t border-gray-700">
-                  <button
-                    onClick={handleEndAuction}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
-                  >
-                    🛑 End Auction Early
-                  </button>
-                  <p className="text-xs text-gray-400 text-center mt-2 select-none">
-                    Admin only - This will immediately end the auction
-                  </p>
-                </div>
-              )}
+             {user?.role === 'admin' && auction.status === 'active' && (
+  <div className="mt-6 pt-6 border-t border-gray-700">
+    <button
+      onClick={() => setShowEndAuctionConfirm(true)}
+      className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
+    >
+      🛑 End Auction Early
+    </button>
+    <p className="text-xs text-gray-400 text-center mt-2 select-none">
+      Admin only - This will immediately end the auction
+    </p>
+  </div>
+)}
+
             </div>
           </div>
         </div>
@@ -715,6 +724,32 @@ const AuctionDetails = () => {
           </div>
         </div>
       )}
+      {showEndAuctionConfirm && (
+  <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div className="bg-gray-900 text-white rounded-2xl max-w-md w-full p-8 mx-2 shadow-2xl">
+      <h2 className="text-xl font-bold mb-4">Confirm End Auction</h2>
+      <p className="mb-6">Are you sure you want to <b>end this auction early</b>? <br /> <span className="text-red-400">This action cannot be undone.</span></p>
+      <div className="flex gap-4">
+        <button
+          onClick={async () => {
+            setShowEndAuctionConfirm(false);
+            await handleEndAuction();
+          }}
+          className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg font-bold text-white transition"
+        >
+          Yes, End Auction
+        </button>
+        <button
+          onClick={() => setShowEndAuctionConfirm(false)}
+          className="flex-1 bg-gray-700 hover:bg-gray-800 py-2 rounded-lg font-bold text-white transition"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };
