@@ -76,12 +76,18 @@ const AuctionDetails = () => {
 
   // --- Socket.io setup for real-time auction ending ---
   const socket = useRef();
-
-  useEffect(() => {
+useEffect(() => {
   socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
 
   socket.current.emit('joinAuctionRoom', id);
 
+  // New bids from anyone -- all tabs update!
+  socket.current.on('bidPlaced', () => {
+    fetchAuction();
+    fetchBids();
+  });
+
+  // Auction ending from anyone
   socket.current.on('auctionEnded', () => {
     toast.info('Auction ended! Showing winner...');
     fetchAuction();
@@ -97,6 +103,7 @@ const AuctionDetails = () => {
     socket.current.disconnect();
   };
 }, [id]);
+
 // Only run on auction id change
 
   // Main polling effect: auction, bids, and autoBidStatus every 2 seconds for live updates
