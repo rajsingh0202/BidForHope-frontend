@@ -3,6 +3,8 @@ import axios from 'axios';
 import { getNGOTransactions } from '../services/api';
 import { ArrowTrendingDownIcon, ArrowTrendingUpIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 import { io } from 'socket.io-client';
+import { toast } from 'react-toastify';
+
 
 const API_BASE_URL =
   process.env.NODE_ENV === "production"
@@ -99,25 +101,43 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
       alert('Please fill in the domain and description.');
       return;
     }
-    setWithdrawing(true);
-    try {
-      await axios.post(`${API_BASE_URL}/api/withdrawals/request`, {
-        ngoEmail,
-        amount: Number(amount),
-        domain,
-        description
-      });
-      setAmount('');
-      setDomain('');
-      setDescription('');
-      fetchWithdrawalRequests();
-      alert('Withdrawal request submitted for admin approval!');
-    } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Withdrawal request failed');
-    } finally {
-      setWithdrawing(false);
-    }
+  setWithdrawing(true);
+try {
+  await axios.post(`${API_BASE_URL}/api/withdrawals/request`, {
+    ngoEmail,
+    amount: Number(amount),
+    domain,
+    description
+  });
+  setAmount('');
+  setDomain('');
+  setDescription('');
+  fetchWithdrawalRequests();
+  toast.success('Withdrawal request submitted for admin approval!', {
+    position: "top-right",
+    autoClose: 3500,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+    theme: "colored",
+  });
+} catch (error) {
+  toast.error(error.response?.data?.message || error.message || 'Withdrawal request failed', {
+    position: "top-right",
+    autoClose: 3500,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    theme: "colored",
+  });
+} finally {
+  setWithdrawing(false);
+}
   };
+
 
   // Handle Bank Form Change
   const handleBankFormChange = (e) => {

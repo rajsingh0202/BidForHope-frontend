@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 
 // Use ngoEmail and NOT ngoId everywhere
 const RazorpayPayment = ({ amount, ngoEmail, auctionId, type, onSuccess, onClose }) => {
+    console.log("RazorpayPayment PROPS:", { amount, ngoEmail, auctionId, type });
   const [loading, setLoading] = useState(false);
   const [paymentMode, setPaymentMode] = useState(null); // null, 'test', or 'real'
   const [testCode, setTestCode] = useState('');
