@@ -66,8 +66,12 @@ export const addDebitTransaction = (ngoId, debitData) =>
   API.post(`/ngos/${ngoId}/transactions/debit`, debitData);
 
 // ---- Donation APIs ----
+// CHANGE: Always pass ngoEmail, not ngoId!
 export const directDonate = (auctionId, donationData) =>
-  axios.post(`${API_URL}/api/auctions/${auctionId}/donate`, donationData);
+  axios.post(`${API_URL}/api/auctions/${auctionId}/donate`, {
+    ...donationData,
+    ngoEmail: donationData.ngoEmail, // ensure email is present in payload
+  });
 
 // ---- Auto-bid Backend APIs ----
 export const enableAutoBid = (auctionId, maxAmount) => {
@@ -94,8 +98,12 @@ export const loginVerifyOtp = ({ email, role, otp }) =>
   API.post('/auth/login-verify-otp', { email, role, otp });
 
 // ---- Payment APIs ----
+// CHANGE: Always use ngoEmail, not ngoId!
 export const createPaymentOrder = (orderData) => 
-  API.post('/payment/create-order', orderData);
+  API.post('/payment/create-order', {
+    ...orderData,
+    ngoEmail: orderData.ngoEmail, // ensure email string instead of id
+  });
 
 export const verifyPayment = (paymentData) => 
   API.post('/payment/verify', paymentData);
@@ -103,15 +111,17 @@ export const verifyPayment = (paymentData) =>
 export const getUserPayments = () => 
   API.get('/payment/user-payments');
 
-export const getNGOPayments = (ngoId) => 
-  API.get(`/payment/ngo-payments/${ngoId}`);
+// CHANGE: Always use ngoEmail!
+export const getNGOPayments = (ngoEmail) => 
+  API.get(`/payment/ngo-payments/${ngoEmail}`);
 
 // ---- Withdrawal APIs ----
 export const createWithdrawalRequest = (withdrawalData) => 
   API.post('/withdrawal/request', withdrawalData);
 
-export const getNGOWithdrawals = (ngoId) => 
-  API.get(`/withdrawal/ngo/${ngoId}`);
+// If your backend uses emails, update these as required:
+export const getNGOWithdrawals = (ngoEmail) => 
+  API.get(`/withdrawal/ngo/${ngoEmail}`);
 
 export const getPendingWithdrawals = () => 
   API.get('/withdrawal/pending');

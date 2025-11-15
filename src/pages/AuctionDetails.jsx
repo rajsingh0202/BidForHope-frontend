@@ -631,7 +631,7 @@ useEffect(() => {
           <div className="max-w-md w-full">
             <RazorpayPayment
               amount={auction.currentPrice}
-              ngoId={auction.ngo?._id}
+              ngoEmail={auction.ngo?.email}   
               auctionId={auction._id}
               type="bid"
               onSuccess={() => {
@@ -651,7 +651,7 @@ useEffect(() => {
     <div className="max-w-md w-full">
       <RazorpayPayment
         amount={donationPaymentAmount}
-        ngoId={auction.ngo?._id}
+        ngoEmail={auction.ngo?.email}   
         auctionId={auction._id}
         type="donation"
         onSuccess={() => {
