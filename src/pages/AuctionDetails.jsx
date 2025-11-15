@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { getAuction, placeBid, getAuctionBids, endAuction, directDonate, enableAutoBid, disableAutoBid, getAutoBidStatus } from '../services/api';
@@ -6,6 +6,10 @@ import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import { FiArrowLeft } from 'react-icons/fi';
 import RazorpayPayment from '../components/RazorpayPayment';
+import { io } from 'socket.io-client';
+
+// Socket.io backend URL
+const SOCKET_BACKEND_URL = 'https://bidforhope.onrender.com';
 
 function getUniqueTopBids(bids) {
   const sorted = [...bids].sort((a, b) => b.amount - a.amount);
@@ -39,7 +43,6 @@ function isWinner(bids, userId) {
   return sorted[0]?.bidder?._id === userId;
 }
 
-
 const AuctionDetails = () => {
   const [winnerName, setWinnerName] = useState('');
   const { id } = useParams();
@@ -51,11 +54,11 @@ const AuctionDetails = () => {
   const [bidAmount, setBidAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-   const [showPayment, setShowPayment] = useState(false);
-const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
 
-const [showDonationPayment, setShowDonationPayment] = useState(false);
-const [donationPaymentAmount, setDonationPaymentAmount] = useState(0);
+  const [showDonationPayment, setShowDonationPayment] = useState(false);
+  const [donationPaymentAmount, setDonationPaymentAmount] = useState(0);
 
   const [showDonate, setShowDonate] = useState(false);
   const [donateAmount, setDonateAmount] = useState('');
@@ -71,6 +74,38 @@ const [donationPaymentAmount, setDonationPaymentAmount] = useState(0);
   const [autoBidMax, setAutoBidMax] = useState('');         // Input for max amount
   const [autoBidStatus, setAutoBidStatus] = useState(null); // Persistent status from backend
 
+  // --- Socket.io setup for real-time auction ending ---
+  const socket = useRef();
+
+  useEffect(() => {
+    // Connect to Socket.IO backend
+    socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
+
+    // Join this auction's room
+    socket.current.emit('joinAuctionRoom', id);
+
+    // Listen for auction ended event
+    socket.current.on('auctionEnded', () => {
+      toast.info('Auction ended! Refreshing...');
+      // Option A: Fetch new auction state for smooth UI update
+      fetchAuction();
+      fetchBids();
+      // Option B: Or to force a full reset, use window.location.reload();
+      // window.location.reload();
+    });
+
+    // Optional: handle socket errors
+    socket.current.on('connect_error', (err) => {
+      console.log('Socket connection error:', err);
+    });
+
+    // Cleanup
+    return () => {
+      socket.current.emit('leaveAuctionRoom', id);
+      socket.current.disconnect();
+    };
+  }, [id]); // Only run on auction id change
+
   // Main polling effect: auction, bids, and autoBidStatus every 2 seconds for live updates
   useEffect(() => {
     const pollAll = () => {
@@ -82,8 +117,7 @@ const [donationPaymentAmount, setDonationPaymentAmount] = useState(0);
           .catch(() => setAutoBidStatus(null));
       }
     };
-     pollAll();
-
+    pollAll();
     // eslint-disable-next-line
   }, [id, isAuthenticated]);
 
@@ -105,11 +139,11 @@ const [donationPaymentAmount, setDonationPaymentAmount] = useState(0);
   }, [auction, bids]);
 
   // If auto-bid is stopped (for any reason), reset setup popup so restart button appears
-useEffect(() => {
-  if (autoBidStatus && !autoBidStatus.isActive) {
-    setAutoBidActive(false);
-  }
-}, [autoBidStatus]);
+  useEffect(() => {
+    if (autoBidStatus && !autoBidStatus.isActive) {
+      setAutoBidActive(false);
+    }
+  }, [autoBidStatus]);
 
 
   const fetchAuction = async () => {
@@ -165,6 +199,7 @@ useEffect(() => {
     try {
       await endAuction(id);
       toast.success('Auction ended successfully');
+      // Fetch updated state, Socket will also broadcast to other users
       fetchAuction();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to end auction');
