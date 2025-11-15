@@ -47,6 +47,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
 
   // Fetch Bank Details (send email in query param)
   const fetchBankDetails = async () => {
+      console.log("Fetching bank details for: ", ngoEmail); // ADD THIS
     if (!ngoEmail) {
       setBankDetails(null);
       return;
