@@ -93,6 +93,7 @@ const AuctionDetails = () => {
     // Listen for bid updates and update bids state
     socketRef.current.on('auctionBidUpdate', (bidsData) => {
       setBids(bidsData);
+      fetchAuction();
     });
 
     // Optional: Listen for auction end event if you want to update the UI instantly
