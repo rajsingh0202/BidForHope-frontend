@@ -94,7 +94,13 @@ const AuctionDetails = () => {
     socketRef.current.on('auctionBidUpdate', (bidsData) => {
       setBids(bidsData);
       fetchAuction();
+      if (isAuthenticated) {
+    getAutoBidStatus(id)
+      .then((res) => setAutoBidStatus(res.data.autoBid))
+      .catch(() => setAutoBidStatus(null));
+  }
     });
+    
 
     // Optional: Listen for auction end event if you want to update the UI instantly
     socketRef.current.on('auctionEnded', () => {
