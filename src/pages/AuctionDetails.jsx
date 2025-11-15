@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   getAuction,
   placeBid,
-  getAuctionBids,
   endAuction,
+  getAuctionBids,
   directDonate,
   enableAutoBid,
   disableAutoBid,
@@ -15,6 +15,7 @@ import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import { FiArrowLeft } from 'react-icons/fi';
 import RazorpayPayment from '../components/RazorpayPayment';
+import { io } from 'socket.io-client';
 
 function getUniqueTopBids(bids) {
   const sorted = [...bids].sort((a, b) => b.amount - a.amount);
@@ -48,6 +49,8 @@ function isWinner(bids, userId) {
   return sorted[0]?.bidder?._id === userId;
 }
 
+const SOCKET_URL = 'http://localhost:5000'; // Change this to your API address if deployed
+
 const AuctionDetails = () => {
   const [winnerName, setWinnerName] = useState('');
   const { id } = useParams();
@@ -79,21 +82,52 @@ const AuctionDetails = () => {
   const [autoBidMax, setAutoBidMax] = useState(''); // Input for max amount
   const [autoBidStatus, setAutoBidStatus] = useState(null); // Persistent status from backend
 
-  // Main polling effect: auction, bids, and autoBidStatus every 2 seconds for live updates
-  useEffect(() => {
-    const pollAll = () => {
-      fetchAuction();
-      fetchBids();
-      if (isAuthenticated) {
-        getAutoBidStatus(id)
-          .then((res) => setAutoBidStatus(res.data.autoBid))
-          .catch(() => setAutoBidStatus(null));
-      }
-    };
-    pollAll();
-    // eslint-disable-next-line
-  }, [id, isAuthenticated]);
+  // ===== SOCKET LOGIC =====
+  const socketRef = useRef(null);
 
+  useEffect(() => {
+    // Connect and join room when component mounts
+    socketRef.current = io(SOCKET_URL, { transports: ['websocket'] });
+    socketRef.current.emit('joinAuctionRoom', id);
+
+    // Listen for bid updates and update bids state
+    socketRef.current.on('auctionBidUpdate', (bidsData) => {
+      setBids(bidsData);
+    });
+
+    // Optional: Listen for auction end event if you want to update the UI instantly
+    socketRef.current.on('auctionEnded', () => {
+      fetchAuction(); // update auction status if ended in backend
+    });
+
+    return () => {
+      socketRef.current.disconnect();
+    };
+    // eslint-disable-next-line
+  }, [id]);
+
+ useEffect(() => {
+  const pollAuctionAndInitBids = async () => {
+    await fetchAuction();
+    try {
+      const { data } = await getAuctionBids(id);
+      setBids(data.data);
+    } catch (error) {
+      // Ignore errors, socket will update later
+    }
+    if (isAuthenticated) {
+      getAutoBidStatus(id)
+        .then((res) => setAutoBidStatus(res.data.autoBid))
+        .catch(() => setAutoBidStatus(null));
+    }
+  };
+
+  pollAuctionAndInitBids();
+  // eslint-disable-next-line
+}, [id, isAuthenticated]);
+
+
+  // Countdown and winner name logic
   useEffect(() => {
     let timerId;
     if (auction && auction.status === 'ended' && bids.length > 0) {
@@ -130,14 +164,8 @@ const AuctionDetails = () => {
     }
   };
 
-  const fetchBids = async () => {
-    try {
-      const { data } = await getAuctionBids(id);
-      setBids(data.data);
-    } catch (error) {
-      console.error('Failed to load bids');
-    }
-  };
+  // DO NOT POLL fetchBids!
+  // const fetchBids = async () => {...}
 
   const handlePlaceBid = async (e) => {
     e.preventDefault();
@@ -150,8 +178,8 @@ const AuctionDetails = () => {
     try {
       await placeBid(id, bidAmount);
       toast.success('Bid placed successfully!');
-      fetchAuction();
-      fetchBids();
+      fetchAuction(); // update auction info if needed
+      // Bids update automatically via socket now!
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to place bid';
       toast.error(message);
@@ -223,7 +251,6 @@ const AuctionDetails = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800">
       <header className="bg-gray-900 shadow-sm">
