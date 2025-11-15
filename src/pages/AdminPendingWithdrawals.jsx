@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { io } from "socket.io-client"; // ← NEW
 
 const API_BASE_URL =
   process.env.NODE_ENV === "production"
     ? "https://bidforhope.onrender.com"
     : "";
+
+const SOCKET_BACKEND_URL = 'https://bidforhope.onrender.com'; // ← NEW
 
 const AdminPendingWithdrawals = () => {
   const [requests, setRequests] = useState([]);
@@ -18,9 +21,40 @@ const AdminPendingWithdrawals = () => {
   const [secretCode, setSecretCode] = useState("");
   const [codeError, setCodeError] = useState("");
   const navigate = useNavigate();
+  const socket = useRef(); // ← NEW
 
   useEffect(() => {
     fetchWithdrawals();
+
+    // 1. Connect socket
+    socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
+
+    // 2. Listen for new withdrawal request
+    socket.current.on("withdrawalRequested", (newRequest) => {
+      // Only add if status is pending
+      if (newRequest.status === "pending") {
+        setRequests((prev) => [newRequest, ...prev]);
+        toast.info("New withdrawal request received");
+      }
+    });
+
+    // 3. Listen for processed/updated request
+    socket.current.on("withdrawalProcessed", (updatedRequest) => {
+      setRequests((prev) =>
+        prev.map(r =>
+          r._id === updatedRequest._id
+            ? updatedRequest
+            : r
+        ).filter(r => r.status === "pending") // Remove if no longer pending
+      );
+      toast.info(`Request updated: ${updatedRequest.status}`);
+    });
+
+    // 4. Cleanup
+    return () => {
+      if (socket.current) socket.current.disconnect();
+    };
+    // eslint-disable-next-line
   }, []);
 
   const fetchWithdrawals = async () => {
