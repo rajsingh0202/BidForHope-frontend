@@ -35,10 +35,11 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
     setLoading(true);
     try {
       const res = await getNGOTransactions(ngoId);
-      setTransactions(res.data.data);
+      setTransactions(Array.isArray(res.data.data) ? res.data.data : []);
       setWalletAmount(res.data.walletAmount);
     } catch (error) {
       alert('Error loading wallet');
+      setTransactions([]);
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
       const res = await axios.get(`/api/withdrawals/my-requests`, {
         params: { ngoEmail }
       });
-      setWithdrawalRequests(res.data.data);
+      setWithdrawalRequests(Array.isArray(res.data.data) ? res.data.data : []);
     } catch (error) {
       setWithdrawalRequests([]);
     }
@@ -237,7 +238,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
               disabled={withdrawing || !bankDetails}
             >
               <option value="">Tag/Domain</option>
-              {domains.map((d) => (
+              {Array.isArray(domains) && domains.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}
             </select>
@@ -281,7 +282,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
             </tr>
           </thead>
           <tbody>
-            {withdrawalRequests.map((req, idx) => (
+            {Array.isArray(withdrawalRequests) && withdrawalRequests.map((req, idx) => (
               <tr
                 key={req._id}
                 className={`border-t border-gray-800 text-gray-400
@@ -303,7 +304,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
                 <td className="px-2 py-2 text-white max-w-xs break-words whitespace-normal">{req.adminNote || '-'}</td>
               </tr>
             ))}
-            {withdrawalRequests.length === 0 && (
+            {(!Array.isArray(withdrawalRequests) || withdrawalRequests.length === 0) && (
               <tr>
                 <td colSpan={7} className="py-5 text-center text-gray-300">No withdrawal requests yet.</td>
               </tr>
@@ -330,7 +331,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
               </tr>
             </thead>
             <tbody>
-              {transactions.map((tx, idx) => (
+              {Array.isArray(transactions) && transactions.map((tx, idx) => (
                 <tr
                   key={tx._id}
                   className={`border-t border-gray-800 text-gray-400
@@ -367,7 +368,7 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
                   </td>
                 </tr>
               ))}
-              {transactions.length === 0 && (
+              {(!Array.isArray(transactions) || transactions.length === 0) && (
                 <tr>
                   <td colSpan={6} className="py-7 text-center text-gray-300 text-sm">
                     No wallet transactions yet.
