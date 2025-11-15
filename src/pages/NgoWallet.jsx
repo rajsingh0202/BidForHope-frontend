@@ -47,6 +47,10 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
 
   // Fetch Bank Details (send email in query param)
   const fetchBankDetails = async () => {
+    if (!ngoEmail) {
+      setBankDetails(null);
+      return;
+    }
     try {
       const res = await axios.get(`/api/ngos/bank-details`, {
         params: { email: ngoEmail }
@@ -131,16 +135,18 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
     }
   };
 
+  // Protect all fetching with email guards, and log on client for debug
   useEffect(() => {
     fetchTransactions();
-    fetchBankDetails();
-    fetchWithdrawalRequests();
-
+    if (ngoEmail) {
+      fetchBankDetails();
+      fetchWithdrawalRequests();
+    }
     // Socket.IO listen for wallet updates
     socket.current = io(SOCKET_BACKEND_URL, { transports: ['websocket'] });
     socket.current.on(`walletUpdate:${ngoId}`, () => {
       fetchTransactions();
-      fetchWithdrawalRequests();
+      if (ngoEmail) fetchWithdrawalRequests();
     });
 
     return () => {
