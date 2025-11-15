@@ -153,6 +153,21 @@ const NgoWallet = ({ ngoId, ngoEmail, isOwner, domains = [] }) => {
       fetchTransactions();
       if (ngoEmail) fetchWithdrawalRequests();
     });
+    // Listen for processed (approved/rejected) withdrawals
+  socket.current.on('withdrawalProcessed', (updatedReq) => {
+    if (updatedReq.ngo === ngoEmail.toLowerCase()) {   // Only reload if it's *this NGO's* request
+      fetchWithdrawalRequests();
+      fetchTransactions();
+    }
+  });
+
+  // Listen for withdrawal requests (refetch if new request belongs to this NGO)
+  socket.current.on('withdrawalRequested', (req) => {
+    if (req.ngo === ngoEmail.toLowerCase()) {
+      fetchWithdrawalRequests();
+    }
+  });
+
 
     return () => {
       if (socket.current) socket.current.disconnect();
