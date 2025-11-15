@@ -5,15 +5,18 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
+
 const MyBids = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
 
+
   useEffect(() => {
     fetchBids();
     // eslint-disable-next-line
   }, []);
+
 
   const fetchBids = async () => {
     try {
@@ -26,6 +29,7 @@ const MyBids = () => {
     }
   };
 
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -34,8 +38,14 @@ const MyBids = () => {
     );
   }
 
-  // Glass badge helper
+
+  // Glass badge helper with null check
   const getResultBadge = (bid) => {
+    // Check if auction exists
+    if (!bid.auction) {
+      return 'bg-gray-600/70 text-gray-300 backdrop-blur-lg shadow';
+    }
+
     if (bid.auction.status === 'ended') {
       return bid.amount === bid.auction.currentPrice
         ? 'bg-green-600/70 text-green-100 backdrop-blur-lg shadow'
@@ -46,20 +56,30 @@ const MyBids = () => {
       : 'bg-yellow-700/70 text-yellow-100 backdrop-blur-lg shadow';
   };
 
+
   const getResultText = (bid) => {
+    // Check if auction exists
+    if (!bid.auction) {
+      return 'UNAVAILABLE';
+    }
+
     if (bid.auction.status === 'ended')
       return bid.amount === bid.auction.currentPrice ? 'WON' : 'LOST';
     return bid.amount === bid.auction.currentPrice ? 'WINNING' : 'OUTBID';
   };
 
-  // Auction status badge
+
+  // Auction status badge with null check
   const getAuctionBadge = (status) => {
+    if (!status) return 'bg-gray-700/70 text-gray-200 backdrop-blur-lg shadow';
+    
     if (status === 'active')
       return 'bg-green-700/70 text-green-200 backdrop-blur-lg shadow';
     if (status === 'ended')
       return 'bg-red-700/70 text-red-200 backdrop-blur-lg shadow';
     return 'bg-gray-700/70 text-gray-200 backdrop-blur-lg shadow';
   };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-900 pt-10 pb-20">
@@ -89,93 +109,113 @@ const MyBids = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {bids.map((bid) => (
-              <div
-                key={bid._id}
-                className="border border-blue-950 rounded-xl shadow-lg p-5 bg-gradient-to-br from-gray-900 to-gray-800 hover:scale-[1.016] hover:shadow-2xl transition-all duration-150 relative"
-              >
-                {/* Status/Result badges */}
-                <div className="absolute top-5 right-6 flex gap-2 z-10">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${getResultBadge(
-                      bid
-                    )}`}
+            {bids.map((bid) => {
+              // Check if auction exists before rendering
+              if (!bid.auction) {
+                return (
+                  <div
+                    key={bid._id}
+                    className="border border-gray-700 rounded-xl shadow-lg p-5 bg-gradient-to-br from-gray-900 to-gray-800"
                   >
-                    {getResultText(bid)}
-                  </span>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${getAuctionBadge(
-                      bid.auction.status
-                    )}`}
-                  >
-                    {bid.auction.status.toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white mb-1">
-                    <Link
-                      to={`/auction/${bid.auction._id}`}
-                      className="hover:text-blue-300 underline"
+                    <p className="text-gray-400 text-center">Auction data unavailable</p>
+                    <div className="mt-3 text-center">
+                      <span className="text-blue-400 text-sm">
+                        Your bid: ₹{bid.amount.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={bid._id}
+                  className="border border-blue-950 rounded-xl shadow-lg p-5 bg-gradient-to-br from-gray-900 to-gray-800 hover:scale-[1.016] hover:shadow-2xl transition-all duration-150 relative"
+                >
+                  {/* Status/Result badges */}
+                  <div className="absolute top-5 right-6 flex gap-2 z-10">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${getResultBadge(
+                        bid
+                      )}`}
                     >
-                      {bid.auction.title}
-                    </Link>
-                  </h2>
-                  <div className="flex flex-wrap gap-2 mb-1 text-xs">
-                    <span className="bg-blue-900 text-blue-200 px-2 py-1 rounded-full capitalize">
-                      {bid.auction.category}
+                      {getResultText(bid)}
                     </span>
-                    <span className="bg-gray-700/70 text-gray-200 px-2 py-1 rounded-full capitalize">
-                      {bid.auction.itemType}
-                    </span>
-                  </div>
-                  <p className="text-gray-300 text-xs mb-2 line-clamp-2">
-                    {bid.auction.description}
-                  </p>
-                  {/* Stats row */}
-                  <div className="flex gap-1 justify-between items-center mb-2 mt-2">
-                    <div className="flex-1 flex flex-col items-center">
-                      <span className="text-[11px] text-gray-400">Your Bid</span>
-                      <span className="font-bold text-blue-400 text-sm">
-                        ₹{bid.amount.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center">
-                      <span className="text-[11px] text-gray-400">Current</span>
-                      <span className="font-bold text-green-300 text-sm">
-                        ₹{bid.auction.currentPrice.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center">
-                      <span className="text-[11px] text-gray-400">Total Bids</span>
-                      <span className="font-bold text-yellow-200 text-sm">
-                        {bid.auction.totalBids}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 text-xs text-gray-500 mb-1">
-                    <span>
-                      {bid.time ? format(new Date(bid.time), 'MMM dd, yyyy HH:mm') : ''}
-                    </span>
-                    <span>
-                      · <span className="capitalize font-semibold">{bid.auction.status}</span>
-                    </span>
-                  </div>
-                  <div className="flex justify-end">
-                    <Link
-                      to={`/auction/${bid.auction._id}`}
-                      className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-lg font-bold text-xs transition-all shadow mt-2"
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getAuctionBadge(
+                        bid.auction.status
+                      )}`}
                     >
-                      View Auction
-                    </Link>
+                      {bid.auction.status ? bid.auction.status.toUpperCase() : 'UNKNOWN'}
+                    </span>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white mb-1">
+                      <Link
+                        to={`/auction/${bid.auction._id}`}
+                        className="hover:text-blue-300 underline"
+                      >
+                        {bid.auction.title || 'Untitled Auction'}
+                      </Link>
+                    </h2>
+                    <div className="flex flex-wrap gap-2 mb-1 text-xs">
+                      <span className="bg-blue-900 text-blue-200 px-2 py-1 rounded-full capitalize">
+                        {bid.auction.category || 'Unknown'}
+                      </span>
+                      <span className="bg-gray-700/70 text-gray-200 px-2 py-1 rounded-full capitalize">
+                        {bid.auction.itemType || 'Unknown'}
+                      </span>
+                    </div>
+                    <p className="text-gray-300 text-xs mb-2 line-clamp-2">
+                      {bid.auction.description || 'No description available'}
+                    </p>
+                    {/* Stats row */}
+                    <div className="flex gap-1 justify-between items-center mb-2 mt-2">
+                      <div className="flex-1 flex flex-col items-center">
+                        <span className="text-[11px] text-gray-400">Your Bid</span>
+                        <span className="font-bold text-blue-400 text-sm">
+                          ₹{bid.amount.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center">
+                        <span className="text-[11px] text-gray-400">Current</span>
+                        <span className="font-bold text-green-300 text-sm">
+                          ₹{bid.auction.currentPrice ? bid.auction.currentPrice.toLocaleString() : '0'}
+                        </span>
+                      </div>
+                      <div className="flex-1 flex flex-col items-center">
+                        <span className="text-[11px] text-gray-400">Total Bids</span>
+                        <span className="font-bold text-yellow-200 text-sm">
+                          {bid.auction.totalBids || 0}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 text-xs text-gray-500 mb-1">
+                      <span>
+                        {bid.time ? format(new Date(bid.time), 'MMM dd, yyyy HH:mm') : ''}
+                      </span>
+                      <span>
+                        · <span className="capitalize font-semibold">{bid.auction.status || 'unknown'}</span>
+                      </span>
+                    </div>
+                    <div className="flex justify-end">
+                      <Link
+                        to={`/auction/${bid.auction._id}`}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-lg font-bold text-xs transition-all shadow mt-2"
+                      >
+                        View Auction
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
     </div>
   );
 };
+
 
 export default MyBids;

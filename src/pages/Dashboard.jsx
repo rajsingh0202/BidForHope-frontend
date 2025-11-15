@@ -76,7 +76,8 @@ const Dashboard = () => {
             if (data?.data && data.data.length > 0) {
               const highest = data.data.reduce((max, bid) =>
                 bid.amount > (max.amount || 0) ? bid : max,
-              {});
+                {}
+              );
               winMap[a._id] = highest.bidder?.name || 'Unknown';
             } else {
               winMap[a._id] = 'No bids';
@@ -266,6 +267,18 @@ const Dashboard = () => {
                   View donation history, wallets, and spending.
                 </p>
               </Link>
+              {/* This is the newly added link for admin pending transactions */}
+              {user?.role === 'admin' && (
+                <Link
+                  to="/admin/pending-transactions"
+                  className="bg-red-900/85 backdrop-blur-lg shadow p-5 rounded-lg hover:ring-2 ring-red-400 transition cursor-pointer"
+                >
+                  <h4 className="font-semibold text-red-200 mb-2 flex items-center">
+                    Pending Transactions
+                  </h4>
+                  <p className="text-xs text-red-300">Review and approve/decline NGO withdrawal requests</p>
+                </Link>
+              )}
             </div>
           </div>
         </div>

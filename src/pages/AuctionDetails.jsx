@@ -5,6 +5,7 @@ import { getAuction, placeBid, getAuctionBids, endAuction, directDonate, enableA
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import { FiArrowLeft } from 'react-icons/fi';
+import RazorpayPayment from '../components/RazorpayPayment';
 
 function getUniqueTopBids(bids) {
   const sorted = [...bids].sort((a, b) => b.amount - a.amount);
@@ -32,6 +33,13 @@ function getTimeLeft(endDate) {
   return `${hours}h ${mins}m ${secs}s`;
 }
 
+function isWinner(bids, userId) {
+  if (!bids || bids.length === 0 || !userId) return false;
+  const sorted = [...bids].sort((a, b) => b.amount - a.amount);
+  return sorted[0]?.bidder?._id === userId;
+}
+
+
 const AuctionDetails = () => {
   const [winnerName, setWinnerName] = useState('');
   const { id } = useParams();
@@ -42,6 +50,12 @@ const AuctionDetails = () => {
   const [loading, setLoading] = useState(true);
   const [bidAmount, setBidAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+   const [showPayment, setShowPayment] = useState(false);
+const [paymentCompleted, setPaymentCompleted] = useState(false);
+
+const [showDonationPayment, setShowDonationPayment] = useState(false);
+const [donationPaymentAmount, setDonationPaymentAmount] = useState(0);
 
   const [showDonate, setShowDonate] = useState(false);
   const [donateAmount, setDonateAmount] = useState('');
@@ -68,6 +82,7 @@ const AuctionDetails = () => {
           .catch(() => setAutoBidStatus(null));
       }
     };
+     pollAll();
 
     // eslint-disable-next-line
   }, [id, isAuthenticated]);
@@ -314,15 +329,40 @@ useEffect(() => {
                   )}
                 </div>
               </div>
-              {/* Winner message */}
-              {auction.status === 'ended' && winnerName && (
-                <div className="bg-green-800 bg-opacity-80 rounded-lg p-4 text-center">
-                  <p className="text-xl font-extrabold text-yellow-300 mb-1">
-                    🎉 Congratulations! 🎉
-                  </p>
-                  <p className="text-2xl font-extrabold text-white">{winnerName}</p>
-                </div>
-              )}
+              {/* Winner message with payment */}
+{auction.status === 'ended' && winnerName && (
+  <div className="bg-green-800 bg-opacity-80 rounded-lg p-4">
+    <div className="text-center mb-4">
+      <p className="text-xl font-extrabold text-yellow-300 mb-1">
+        🎉 Congratulations! 🎉
+      </p>
+      <p className="text-2xl font-extrabold text-white">{winnerName}</p>
+    </div>
+    
+    {/* Show Pay Now button if current user is the winner and hasn't paid */}
+    {isAuthenticated && isWinner(bids, user?.id) && !paymentCompleted && (
+      <div className="mt-4">
+        <button
+          onClick={() => setShowPayment(true)}
+          className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 rounded-lg transition transform hover:scale-105"
+        >
+          💳 Pay Now - Complete Your Donation
+        </button>
+        <p className="text-xs text-center text-green-200 mt-2">
+          Pay ₹{auction.currentPrice.toLocaleString()} to support {auction.ngo?.name}
+        </p>
+      </div>
+    )}
+    
+    {paymentCompleted && (
+      <div className="mt-4 bg-green-900 p-3 rounded-lg text-center">
+        <p className="text-white font-semibold">✅ Payment Completed!</p>
+        <p className="text-green-200 text-sm mt-1">Thank you for your contribution!</p>
+      </div>
+    )}
+  </div>
+)}
+
             </div>
             {/* Bid History */}
             <div className="bg-gray-900 rounded-xl shadow-md p-6">
@@ -519,86 +559,55 @@ useEffect(() => {
               </div>
               {/* === End Auto-Bid section === */}
               {auction.allowDirectDonation && (
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <button
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition"
-                    onClick={() => setShowDonate(true)}
-                  >
-                    💚 Donate Directly
-                  </button>
-                  {showDonate && (
-                    <div className="mt-4 bg-gray-800 p-4 rounded-lg">
-                      <form
-                        onSubmit={async (e) => {
-                          e.preventDefault();
-                          setDonateLoading(true);
-                          try {
-                            await directDonate(auction._id, {
-                              amount: Number(donateAmount),
-                              donorName,
-                              donorMessage: donorMsg,
-                            });
-                            toast.success('Thank you for your donation!');
-                            setShowDonate(false);
-                            setDonateAmount('');
-                            setDonorName('');
-                            setDonorMsg('');
-                          } catch (err) {
-                            toast.error(
-                              err.response?.data?.message ||
-                                'Failed to process donation'
-                            );
-                          } finally {
-                            setDonateLoading(false);
-                          }
-                        }}
-                      >
-                        <input
-                          type="number"
-                          className="mb-2 w-full px-4 py-2 border border-gray-600 bg-black text-white rounded"
-                          placeholder="Amount (₹)"
-                          min={1}
-                          required
-                          value={donateAmount}
-                          onChange={(e) => setDonateAmount(e.target.value)}
-                          disabled={donateLoading}
-                        />
-                        <input
-                          className="mb-2 w-full px-4 py-2 border border-gray-600 bg-black text-white rounded"
-                          placeholder="Your name (optional)"
-                          value={donorName}
-                          onChange={(e) => setDonorName(e.target.value)}
-                          disabled={donateLoading}
-                        />
-                        <textarea
-                          className="mb-2 w-full px-4 py-2 border border-gray-600 bg-black text-white rounded"
-                          placeholder="Message (optional)"
-                          value={donorMsg}
-                          onChange={(e) => setDonorMsg(e.target.value)}
-                          disabled={donateLoading}
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="submit"
-                            disabled={donateLoading}
-                            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded"
-                          >
-                            {donateLoading ? 'Donating...' : 'Donate'}
-                          </button>
-                          <button
-                            type="button"
-                            className="bg-gray-700 hover:bg-gray-800 text-white font-semibold px-4 py-2 rounded"
-                            onClick={() => setShowDonate(false)}
-                            disabled={donateLoading}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-                </div>
-              )}
+  <div className="mt-4 pt-4 border-t border-gray-700">
+    <button
+      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition"
+      onClick={() => setShowDonate(true)}
+    >
+      💚 Donate Directly
+    </button>
+    {showDonate && !showDonationPayment && (
+      <div className="mt-4 bg-gray-800 p-4 rounded-lg">
+        <h4 className="text-white font-semibold mb-3">Enter Donation Amount</h4>
+        <input
+          type="number"
+          className="mb-3 w-full px-4 py-2 border border-gray-600 bg-black text-white rounded"
+          placeholder="Amount (₹)"
+          min={1}
+          required
+          value={donateAmount}
+          onChange={(e) => setDonateAmount(e.target.value)}
+        />
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              if (!donateAmount || donateAmount < 1) {
+                toast.error('Please enter a valid amount');
+                return;
+              }
+              setDonationPaymentAmount(Number(donateAmount));
+              setShowDonationPayment(true);
+            }}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded"
+          >
+            Proceed to Payment
+          </button>
+          <button
+            type="button"
+            className="bg-gray-700 hover:bg-gray-800 text-white font-semibold px-4 py-2 rounded"
+            onClick={() => {
+              setShowDonate(false);
+              setDonateAmount('');
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
               {user?.role === 'admin' && auction.status === 'active' && (
                 <div className="mt-6 pt-6 border-t border-gray-700">
                   <button
@@ -616,7 +625,52 @@ useEffect(() => {
           </div>
         </div>
       </main>
+    {/* Payment Modal */}
+      {showPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="max-w-md w-full">
+            <RazorpayPayment
+              amount={auction.currentPrice}
+              ngoId={auction.ngo?._id}
+              auctionId={auction._id}
+              type="bid"
+              onSuccess={() => {
+                setPaymentCompleted(true);
+                setShowPayment(false);
+                toast.success('Payment successful! NGO wallet credited.');
+              }}
+              onClose={() => setShowPayment(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Donation Payment Modal */}
+{showDonationPayment && (
+  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+    <div className="max-w-md w-full">
+      <RazorpayPayment
+        amount={donationPaymentAmount}
+        ngoId={auction.ngo?._id}
+        auctionId={auction._id}
+        type="donation"
+        onSuccess={() => {
+          setShowDonationPayment(false);
+          setShowDonate(false);
+          setDonateAmount('');
+          toast.success('Donation successful! NGO wallet credited.');
+        }}
+        onClose={() => {
+          setShowDonationPayment(false);
+          setShowDonate(false);
+        }}
+      />
     </div>
+  </div>
+)}
+
+    </div>
+    
   );
 };
 

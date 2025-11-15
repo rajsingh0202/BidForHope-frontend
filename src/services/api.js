@@ -93,4 +93,30 @@ export const loginSendOtp = (credentials) =>
 export const loginVerifyOtp = ({ email, role, otp }) =>
   API.post('/auth/login-verify-otp', { email, role, otp });
 
+// ---- Payment APIs ----
+export const createPaymentOrder = (orderData) => 
+  API.post('/payment/create-order', orderData);
+
+export const verifyPayment = (paymentData) => 
+  API.post('/payment/verify', paymentData);
+
+export const getUserPayments = () => 
+  API.get('/payment/user-payments');
+
+export const getNGOPayments = (ngoId) => 
+  API.get(`/payment/ngo-payments/${ngoId}`);
+
+// ---- Withdrawal APIs ----
+export const createWithdrawalRequest = (withdrawalData) => 
+  API.post('/withdrawal/request', withdrawalData);
+
+export const getNGOWithdrawals = (ngoId) => 
+  API.get(`/withdrawal/ngo/${ngoId}`);
+
+export const getPendingWithdrawals = () => 
+  API.get('/withdrawal/pending');
+
+export const updateWithdrawalStatus = (id, statusData) => 
+  API.put(`/withdrawal/${id}/status`, statusData);
+
 export default API;

@@ -13,6 +13,7 @@ import AdminPendingAuctions from './pages/AdminPendingAuctions';
 import MyBids from './pages/MyBids';
 import AdminPendingNGOs from './pages/AdminPendingNGOs';
 import AllNgoTransactions from './pages/AllNgoTransactions'; // <-- ADD THIS IMPORT
+import AdminPendingWithdrawals from './pages/AdminPendingWithdrawals';
 
 function App() {
   return (
@@ -75,6 +76,8 @@ function App() {
             } 
           />
           <Route path="/my-bids" element={<ProtectedRoute><MyBids /></ProtectedRoute>} />  
+          <Route path="/admin/pending-transactions" element={<AdminPendingWithdrawals />} />
+
         </Routes>
       </div>
     </Router>
