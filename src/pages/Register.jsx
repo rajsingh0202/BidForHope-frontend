@@ -56,19 +56,24 @@ const Register = () => {
   };
 
   const isGmail = (email) =>
-  /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
+    /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email);
+
   // Send OTP for email verification
   const handleSendOtp = async () => {
     if (!formData.email) return toast.error("Enter your email first");
-    if (!isGmail(formData.email)) {
-    return toast.error("Only valid @gmail.com addresses allowed.");
-  }
+    if (!isGmail(formData.email)) return toast.error("Only valid @gmail.com addresses allowed.");
+
     try {
-      await sendOtp({ email: formData.email });
-      setOtpSent(true);
-      toast.success('OTP sent to your email!');
+      const response = await sendOtp({ email: formData.email });
+      setOtpSent(true); // Show OTP field - new or resend
+      toast.success(response.message || 'OTP sent! If already pending, OTP is resent.');
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Failed to send OTP');
+      setOtpSent(true); // ALWAYS set true for all but "already registered"
+      if (error?.response?.data?.type === 'registered') {
+        toast.error("Email is already registered. Please login.");
+      } else {
+        toast.info(error?.response?.data?.message || 'OTP sent or already pending. Please use the code in your email.');
+      }
     }
   };
 
@@ -156,19 +161,19 @@ const Register = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-700 rounded-l-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
-                placeholder="you@gmail.com.com"
-                disabled={otpVerified} // Once verified, don't allow change
+                placeholder="you@gmail.com"
+                disabled={otpVerified}
               />
               <button
                 type="button"
                 onClick={handleSendOtp}
                 className="bg-green-700 text-white px-4 rounded-r-lg hover:bg-green-800"
-                disabled={!formData.email || otpSent || otpVerified}
+                disabled={!formData.email || otpVerified}
               >
                 {otpSent ? 'OTP Sent' : 'Send OTP'}
               </button>
             </div>
-            {/* OTP input section shows after OTP is sent, until OTP is verified */}
+            {/* OTP input section shows after (re)send, until OTP is verified */}
             {otpSent && !otpVerified && (
               <div className="mt-4 flex">
                 <input
