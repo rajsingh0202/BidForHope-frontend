@@ -23,6 +23,10 @@ const Register = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
 
+  // loading states
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+
   const navigate = useNavigate();
 
   // Handle input change for registration data
@@ -63,29 +67,72 @@ const Register = () => {
     if (!formData.email) return toast.error("Enter your email first");
     if (!isGmail(formData.email)) return toast.error("Only valid @gmail.com addresses allowed.");
 
+    setIsSendingOtp(true);
     try {
       const response = await sendOtp({ email: formData.email });
-      setOtpSent(true); // Show OTP field - new or resend
-      toast.success(response.message || 'OTP sent! If already pending, OTP is resent.');
-    } catch (error) {
-      setOtpSent(true); // ALWAYS set true for all but "already registered"
-      if (error?.response?.data?.type === 'registered') {
-        toast.error("Email is already registered. Please login.");
+      // axios response payload: response.data
+      const data = response?.data || {};
+      if (data.success) {
+        setOtpSent(true); // show OTP UI only on success
+        toast.success(data.message || 'OTP sent! Check your email.');
+
+        // If backend returned OTP in dev, show it for debugging (remove in production)
+        if (data.otp) {
+          console.log('DEV OTP:', data.otp);
+          // show a subtle toast so developer can see it
+          toast.info(`DEV OTP: ${data.otp}`, { autoClose: 6000 });
+        }
       } else {
-        toast.info(error?.response?.data?.message || 'OTP sent or already pending. Please use the code in your email.');
+        // Defensive: if success flag missing but 2xx, still set and show message
+        toast.info(data.message || 'OTP request processed. Check your email.');
+        if (data.otp) {
+          setOtpSent(true);
+          console.log('DEV OTP:', data.otp);
+        }
       }
+    } catch (error) {
+      // Do NOT set otpSent here — only when server actually confirmed OTP creation/sending.
+      const serverMsg = error?.response?.data?.message;
+      const serverDetails = error?.response?.data?.details;
+      const serverType = error?.response?.data?.type;
+
+      if (serverType === 'registered') {
+        toast.error("Email is already registered. Please login.");
+      } else if (serverMsg) {
+        // show server message; include details in dev if available
+        toast.error(serverMsg + (serverDetails ? ` (${serverDetails})` : ''));
+      } else {
+        toast.error(error.message || 'Failed to send OTP. Try again later.');
+      }
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
   // Verify OTP, unlock full registration form
   const handleVerifyOtp = async () => {
+    if (!otp) return toast.error('Enter the OTP first');
+    setIsVerifyingOtp(true);
     try {
-      await verifyOtp({ email: formData.email, otp });
-      setOtpVerified(true);
-      toast.success('OTP verified! You can now create your account.');
+      const response = await verifyOtp({ email: formData.email, otp });
+      const data = response?.data || {};
+      if (data.success) {
+        setOtpVerified(true);
+        toast.success(data.message || 'OTP verified! You can now create your account.');
+      } else {
+        toast.error(data.message || 'Invalid OTP');
+        setOtpVerified(false);
+      }
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Invalid OTP');
+      const serverMsg = error?.response?.data?.message;
+      if (serverMsg) {
+        toast.error(serverMsg);
+      } else {
+        toast.error(error.message || 'Invalid OTP');
+      }
       setOtpVerified(false);
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -162,18 +209,19 @@ const Register = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-3 border border-gray-700 rounded-l-lg bg-black text-white focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-gray-500"
                 placeholder="you@gmail.com"
-                disabled={otpVerified}
+                disabled={otpVerified || isSendingOtp}
               />
               <button
                 type="button"
                 onClick={handleSendOtp}
-                className="bg-green-700 text-white px-4 rounded-r-lg hover:bg-green-800"
-                disabled={!formData.email || otpVerified}
+                className="bg-green-700 text-white px-4 rounded-r-lg hover:bg-green-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={!formData.email || otpVerified || isSendingOtp}
               >
-                {otpSent ? 'OTP Sent' : 'Send OTP'}
+                {isSendingOtp ? 'Sending...' : otpSent ? 'OTP Sent' : 'Send OTP'}
               </button>
             </div>
-            {/* OTP input section shows after (re)send, until OTP is verified */}
+
+            {/* OTP input section shows after successful send, until OTP is verified */}
             {otpSent && !otpVerified && (
               <div className="mt-4 flex">
                 <input
@@ -186,11 +234,11 @@ const Register = () => {
                 />
                 <button
                   type="button"
-                  className="bg-blue-700 text-white px-4 rounded-r-lg hover:bg-blue-800"
+                  className="bg-blue-700 text-white px-4 rounded-r-lg hover:bg-blue-800 disabled:opacity-60 disabled:cursor-not-allowed"
                   onClick={handleVerifyOtp}
-                  disabled={!otp}
+                  disabled={!otp || isVerifyingOtp}
                 >
-                  Verify OTP
+                  {isVerifyingOtp ? 'Verifying...' : 'Verify OTP'}
                 </button>
               </div>
             )}
