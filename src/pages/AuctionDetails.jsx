@@ -203,13 +203,7 @@ const AuctionDetails = () => {
   };
 
   const handleEndAuction = async () => {
-    if (
-      !window.confirm(
-        'Are you sure you want to end this auction early? This action cannot be undone.'
-      )
-    ) {
-      return;
-    }
+    
     try {
       await endAuction(id);
       toast.success('Auction ended successfully');
